@@ -1,0 +1,1688 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#0a0a0a" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Entreno Alex" />
+  <title>Entreno Alex</title>
+
+  <link rel="manifest" href='data:application/manifest+json;utf-8,{"name":"Entreno Alex","short_name":"Entreno","start_url":".","display":"standalone","background_color":"#0a0a0a","theme_color":"#0a0a0a","orientation":"portrait","icons":[{"src":"data:image/svg+xml;utf-8,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 192 192%22%3E%3Crect width=%22192%22 height=%22192%22 rx=%2240%22 fill=%22%2310b981%22/%3E%3Cpath d=%22M64 56 L64 136 M128 56 L128 136 M64 96 L128 96%22 stroke=%22%23052e1a%22 stroke-width=%2218%22 stroke-linecap=%22round%22/%3E%3C/svg%3E","sizes":"192x192","type":"image/svg+xml","purpose":"any"}]}' />
+
+  <link rel="icon" href='data:image/svg+xml;utf-8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><rect width="32" height="32" rx="6" fill="%2310b981"/><path d="M11 9 L11 23 M21 9 L21 23 M11 16 L21 16" stroke="%23052e1a" stroke-width="3" stroke-linecap="round"/></svg>' />
+
+  <script src="https://cdn.tailwindcss.com?plugins=forms"></script>
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+  <style>
+    html, body, #root { height: 100%; }
+    body { background: #0a0a0a; color: #f4f4f5; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+    @keyframes fadeIn { from { opacity: 0 } to { opacity: 1 } }
+    @keyframes slideUp { from { transform: translateY(40px); opacity: 0 } to { transform: translateY(0); opacity: 1 } }
+    @keyframes slideUpLg { from { transform: translateY(80px); opacity: 0 } to { transform: translateY(0); opacity: 1 } }
+    @keyframes zoomIn { from { transform: scale(0.95); opacity: 0 } to { transform: scale(1); opacity: 1 } }
+    .anim-fade { animation: fadeIn 320ms ease-out both }
+    .anim-slide { animation: slideUp 360ms cubic-bezier(0.2,0.8,0.2,1) both }
+    .anim-slide-lg { animation: slideUpLg 420ms cubic-bezier(0.2,0.8,0.2,1) both }
+    .anim-zoom { animation: zoomIn 320ms ease-out both }
+    /* iOS bottom safe area */
+    .pb-nav { padding-bottom: calc(110px + env(safe-area-inset-bottom)); }
+    .nav-fixed { padding-bottom: env(safe-area-inset-bottom); }
+    /* tap highlight off */
+    button, a { -webkit-tap-highlight-color: transparent; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel" data-presets="react">
+  const { useState, useEffect, useRef } = React;
+
+  /* ============================================================
+     ICONOS (Lucide inline)
+     ============================================================ */
+  const Svg = ({ children, size = 24, className = "", fill = "none", strokeWidth = 2, ...rest }) => (
+    <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24"
+         fill={fill} stroke="currentColor" strokeWidth={strokeWidth}
+         strokeLinecap="round" strokeLinejoin="round" className={className} {...rest}>
+      {children}
+    </svg>
+  );
+  const Play         = (p) => <Svg {...p}><polygon points="6 3 20 12 6 21 6 3" /></Svg>;
+  const Activity     = (p) => <Svg {...p}><path d="M22 12h-2.48a2 2 0 0 0-1.93 1.46l-2.35 8.36a.5.5 0 0 1-.96 0L9.24 2.18a.5.5 0 0 0-.96 0l-2.35 8.36A2 2 0 0 1 4 12H2" /></Svg>;
+  const Calendar     = (p) => <Svg {...p}><path d="M8 2v4" /><path d="M16 2v4" /><rect width="18" height="18" x="3" y="4" rx="2" /><path d="M3 10h18" /></Svg>;
+  const Award        = (p) => <Svg {...p}><path d="m15.477 12.89 1.515 8.526a.5.5 0 0 1-.81.47l-3.58-2.687a1 1 0 0 0-1.197 0l-3.586 2.686a.5.5 0 0 1-.81-.469l1.514-8.526" /><circle cx="12" cy="8" r="6" /></Svg>;
+  const ArrowLeft    = (p) => <Svg {...p}><path d="m12 19-7-7 7-7" /><path d="M19 12H5" /></Svg>;
+  const Heart        = (p) => <Svg {...p}><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7 7-7Z" /></Svg>;
+  const Scale        = (p) => <Svg {...p}><path d="m16 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z" /><path d="m2 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z" /><path d="M7 21h10" /><path d="M12 3v18" /><path d="M3 7h2c2 0 5-1 7-2 2 1 5 2 7 2h2" /></Svg>;
+  const Ruler        = (p) => <Svg {...p}><path d="M21.3 8.7 8.7 21.3a2.4 2.4 0 0 1-3.4 0L2.7 18.7a2.4 2.4 0 0 1 0-3.4L15.3 2.7a2.4 2.4 0 0 1 3.4 0l2.6 2.6a2.4 2.4 0 0 1 0 3.4Z" /><path d="m7.5 10.5 2 2" /><path d="m10.5 7.5 2 2" /><path d="m13.5 4.5 2 2" /><path d="m4.5 13.5 2 2" /></Svg>;
+  const Plus         = (p) => <Svg {...p}><path d="M5 12h14" /><path d="M12 5v14" /></Svg>;
+  const X            = (p) => <Svg {...p}><path d="M18 6 6 18" /><path d="m6 6 12 12" /></Svg>;
+  const LayoutList   = (p) => <Svg {...p}><rect width="7" height="7" x="3" y="3" rx="1" /><rect width="7" height="7" x="3" y="14" rx="1" /><path d="M14 4h7" /><path d="M14 9h7" /><path d="M14 15h7" /><path d="M14 20h7" /></Svg>;
+  const Save         = (p) => <Svg {...p}><path d="M15.2 3a2 2 0 0 1 1.4.6l3.8 3.8a2 2 0 0 1 .6 1.4V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h10.2z" /><path d="M17 21v-7a1 1 0 0 0-1-1H8a1 1 0 0 0-1 1v7" /><path d="M7 3v4a1 1 0 0 0 1 1h7" /></Svg>;
+  const CheckCircle  = (p) => <Svg {...p}><path d="M21.801 10A10 10 0 1 1 17 3.335" /><path d="m9 11 3 3L22 4" /></Svg>;
+  const ChevronRight = (p) => <Svg {...p}><path d="m9 18 6-6-6-6" /></Svg>;
+  const Anchor       = (p) => <Svg {...p}><path d="M12 22V8" /><path d="M5 12H2a10 10 0 0 0 20 0h-3" /><circle cx="12" cy="5" r="3" /></Svg>;
+  const Timer        = (p) => <Svg {...p}><line x1="10" x2="14" y1="2" y2="2" /><line x1="12" x2="15" y1="14" y2="11" /><circle cx="12" cy="14" r="8" /></Svg>;
+  const Download     = (p) => <Svg {...p}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" x2="12" y1="15" y2="3" /></Svg>;
+  const Trash2       = (p) => <Svg {...p}><path d="M3 6h18" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" /><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /><line x1="10" x2="10" y1="11" y2="17" /><line x1="14" x2="14" y1="11" y2="17" /></Svg>;
+  const Info         = (p) => <Svg {...p}><circle cx="12" cy="12" r="10" /><path d="M12 16v-4" /><path d="M12 8h.01" /></Svg>;
+  const Smartphone   = (p) => <Svg {...p}><rect width="14" height="20" x="5" y="2" rx="2" ry="2" /><path d="M12 18h.01" /></Svg>;
+  const Pencil       = (p) => <Svg {...p}><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z" /><path d="m15 5 4 4" /></Svg>;
+  const Footprints   = (p) => <Svg {...p}><path d="M4 16v-2.38c0-.41-.04-.82-.21-1.2-.5-1.16-.78-2.39-.78-3.84C3 6 4.93 4 7 4c1.42 0 2.65.99 3 2.5.35-1.51 1.58-2.5 3-2.5 2.07 0 4 2 4 4.58 0 1.45-.28 2.68-.78 3.84-.17.38-.21.79-.21 1.2V16" /><path d="M14 20h2c.55 0 1-.45 1-1v-3c0-.55-.45-1-1-1H8c-.55 0-1 .45-1 1v3c0 .55.45 1 1 1h2" /><path d="M10 20v-6" /><path d="M14 20v-6" /></Svg>;
+  const Edit         = Pencil;
+  const Bell         = (p) => <Svg {...p}><path d="M10.268 21a2 2 0 0 0 3.464 0" /><path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326" /></Svg>;
+  const Refresh      = (p) => <Svg {...p}><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" /><path d="M21 3v5h-5" /><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" /><path d="M8 16H3v5" /></Svg>;
+
+  /* ============================================================
+     ALMACENAMIENTO
+     ============================================================ */
+  const KEYS = {
+    WORKOUTS: 'alex_workouts_v9',
+    WALKS: 'alex_walks_v9',
+    HEALTH: 'alex_health_v9',
+    SESSION: 'alex_session_active_v9'
+  };
+  const storage = {
+    save(key, data) {
+      try { localStorage.setItem(key, JSON.stringify(data)); }
+      catch (e) { console.warn('localStorage no disponible:', e); }
+    },
+    load(key, fallback) {
+      try {
+        const raw = localStorage.getItem(key);
+        if (raw == null || raw === 'undefined') return fallback;
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(fallback) && !Array.isArray(parsed)) return fallback;
+        return parsed;
+      } catch (e) { return fallback; }
+    },
+    remove(key) { try { localStorage.removeItem(key); } catch (e) {} }
+  };
+
+  /* ============================================================
+     HELPERS GENÉRICOS
+     ============================================================ */
+  const uid = () => `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 9)}`;
+
+  /* Acepta "97,8" o "97.8" → 97.8. Vacío permanece vacío. */
+  const parseNum = (v) => {
+    if (v === '' || v == null) return '';
+    const s = String(v).replace(',', '.').trim();
+    if (s === '' || s === '-' || s === '.') return s;
+    const n = Number(s);
+    return isNaN(n) ? '' : n;
+  };
+
+  /* CSV: escapa comillas dobles y envuelve si lleva separadores. */
+  const csvCell = (v) => {
+    const s = (v == null) ? '' : String(v);
+    if (/[",\n;]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
+    return s;
+  };
+
+  /* Vibración + beep para alertas táctiles/sonoras. */
+  const vibrate = (pattern) => {
+    try { if (navigator.vibrate) navigator.vibrate(pattern); } catch (e) {}
+  };
+  let audioCtx = null;
+  const beep = () => {
+    try {
+      audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+      const t0 = audioCtx.currentTime;
+      [880, 660, 880].forEach((freq, i) => {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'sine';
+        osc.frequency.value = freq;
+        gain.gain.setValueAtTime(0.0001, t0 + i * 0.18);
+        gain.gain.exponentialRampToValueAtTime(0.4, t0 + i * 0.18 + 0.01);
+        gain.gain.exponentialRampToValueAtTime(0.0001, t0 + i * 0.18 + 0.15);
+        osc.connect(gain).connect(audioCtx.destination);
+        osc.start(t0 + i * 0.18);
+        osc.stop(t0 + i * 0.18 + 0.16);
+      });
+    } catch (e) {}
+  };
+
+  /* Descarga CSV con BOM para que Excel respete acentos. */
+  const downloadCsv = (filename, content) => {
+    try {
+      const blob = new Blob(['﻿' + content], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = filename; a.style.display = 'none';
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      return true;
+    } catch (e) { return false; }
+  };
+
+  /* "DD/MM" → timestamp aproximado (asume año actual). */
+  const dateStrToTs = (dmy) => {
+    const m = /^(\d{2})\/(\d{2})$/.exec(dmy || '');
+    if (!m) return 0;
+    const now = new Date();
+    return new Date(now.getFullYear(), Number(m[2]) - 1, Number(m[1])).getTime();
+  };
+
+  /* ============================================================
+     SEED DATA (Excel V5)
+     ============================================================ */
+  const ts = (iso) => new Date(iso).getTime();
+  const SEED_HEALTH = [
+    { date: '27/04', weight: 98.7, waist: 98.0, note: 'Inicio de fase',  timestamp: ts('2026-04-27T08:00:00') },
+    { date: '28/04', weight: 98.9, waist: 97.0, note: '-',                timestamp: ts('2026-04-28T08:00:00') },
+    { date: '01/05', weight: 98.5, waist: 96.5, note: 'Mínimo previo',   timestamp: ts('2026-05-01T08:00:00') },
+    { date: '02/05', weight: 99.5, waist: 96.5, note: 'Post-hamburguesa',timestamp: ts('2026-05-02T08:00:00') },
+    { date: '03/05', weight: 98.8, waist: 98.0, note: 'Post-desayuno',   timestamp: ts('2026-05-03T08:00:00') },
+    { date: '04/05', weight: 97.8, waist: 96.0, note: 'Mínimo histórico',timestamp: ts('2026-05-04T08:00:00') },
+    { date: '05/05', weight: 97.8, waist: 96.0, note: '-',                timestamp: ts('2026-05-05T08:00:00') },
+    { date: '06/05', weight: 97.8, waist: 95.5, note: '¡Nuevo mínimo!',  timestamp: ts('2026-05-06T08:00:00') }
+  ];
+
+  const SEED_WORKOUTS = [
+    {
+      id: 'seed-1', timestamp: ts('2026-04-28T18:00:00'),
+      routine: 'Día A: Empuje + Tracc. Horizontal',
+      log: [
+        { id: 'bench', name: 'Press Banca',       sets: [{reps:6,weight:70},{reps:6,weight:70},{reps:5,weight:70},{reps:5,weight:70}], vol: 1540 },
+        { id: 'pull',  name: 'Dominadas',         sets: [{reps:5,weight:0},{reps:4,weight:0},{reps:4,weight:0},{reps:4,weight:0}],     vol: 0 },
+        { id: 'sq',    name: 'Sentadilla Goblet', sets: [{reps:10,weight:24},{reps:10,weight:24},{reps:10,weight:24}],                  vol: 720 },
+        { id: 'row',   name: 'Remo Barra',        sets: [{reps:6,weight:60},{reps:6,weight:60},{reps:6,weight:60},{reps:6,weight:60}], vol: 1440 }
+      ]
+    },
+    {
+      id: 'seed-2', timestamp: ts('2026-04-29T18:00:00'),
+      routine: 'Día A: Empuje + Tracc. Horizontal',
+      log: [
+        { id: 'bench', name: 'Press Banca',        sets: [{reps:6,weight:70},{reps:6,weight:70},{reps:6,weight:70},{reps:5,weight:70}], vol: 1610 },
+        { id: 'pull',  name: 'Dominadas',          sets: [{reps:5,weight:0},{reps:5,weight:0},{reps:5,weight:0},{reps:5,weight:0}],     vol: 0 },
+        { id: 'sq',    name: 'Sentadilla Frontal', sets: [{reps:8,weight:40},{reps:8,weight:40},{reps:8,weight:40},{reps:8,weight:40}], vol: 1280 },
+        { id: 'row',   name: 'Remo Barra',         sets: [{reps:6,weight:60},{reps:6,weight:60},{reps:6,weight:60},{reps:6,weight:60}], vol: 1440 }
+      ]
+    },
+    {
+      id: 'seed-3', timestamp: ts('2026-04-30T18:30:00'),
+      routine: 'Kettlebell (5 Rondas - 21 min)',
+      log: [
+        { id: 'kb-swing',  name: 'Swing',         sets: Array(5).fill({reps:20,weight:20}), vol: 2000 },
+        { id: 'kb-snatch', name: 'Snatch',        sets: Array(5).fill({reps:16,weight:16}), vol: 1280 },
+        { id: 'kb-goblet', name: 'Goblet Squat',  sets: Array(5).fill({reps:10,weight:20}), vol: 1000 },
+        { id: 'kb-cp',     name: 'Clean & Press', sets: Array(5).fill({reps:12,weight:16}), vol: 960 },
+        { id: 'kb-wm',     name: 'Windmill',      sets: Array(5).fill({reps:10,weight:16}), vol: 800 }
+      ]
+    },
+    {
+      id: 'seed-4', timestamp: ts('2026-05-02T11:00:00'),
+      routine: 'Día B: Empuje + Tracc. Vertical',
+      log: [
+        { id: 'rdl', name: 'Peso Muerto RDL',   sets: [{reps:6,weight:100},{reps:6,weight:100},{reps:6,weight:100},{reps:6,weight:100}], vol: 2400 },
+        { id: 'mil', name: 'Press Militar',     sets: [{reps:6,weight:45},{reps:6,weight:45},{reps:6,weight:45},{reps:6,weight:45}],     vol: 1080 },
+        { id: 'lun', name: 'Zancada Invertida', sets: [{reps:8,weight:18},{reps:8,weight:18},{reps:8,weight:18}],                        vol: 432 },
+        { id: 'dip', name: 'Fondos Paralelas',  sets: [{reps:7,weight:0},{reps:7,weight:0},{reps:7,weight:0},{reps:7,weight:0}],         vol: 0 }
+      ]
+    },
+    {
+      id: 'seed-5', timestamp: ts('2026-05-04T18:00:00'),
+      routine: 'Día A: Empuje + Tracc. Horizontal',
+      log: [
+        { id: 'bench', name: 'Press Banca',        sets: [{reps:7,weight:70},{reps:7,weight:70},{reps:7,weight:70},{reps:5,weight:70}], vol: 1820 },
+        { id: 'pull',  name: 'Dominadas',          sets: [{reps:4,weight:0},{reps:4,weight:0},{reps:5,weight:0},{reps:5,weight:0}],     vol: 0 },
+        { id: 'sq',    name: 'Sentadilla Frontal', sets: [{reps:8,weight:50},{reps:8,weight:50},{reps:8,weight:50},{reps:8,weight:50}], vol: 1600 },
+        { id: 'row',   name: 'Remo Barra',         sets: [{reps:6,weight:60},{reps:6,weight:60},{reps:6,weight:60},{reps:6,weight:60}], vol: 1440 }
+      ]
+    }
+  ];
+
+  /* ============================================================
+     RUTINAS
+     ============================================================ */
+  const KB_DEFAULTS = [
+    { name: 'Swing',         id: 'kb-swing',  reps: 20, weight: 20 },
+    { name: 'Snatch',        id: 'kb-snatch', reps: 16, weight: 16 },
+    { name: 'Goblet Squat',  id: 'kb-goblet', reps: 10, weight: 20 },
+    { name: 'Clean & Press', id: 'kb-cp',     reps: 12, weight: 16 },
+    { name: 'Windmill',      id: 'kb-wm',     reps: 10, weight: 16 }
+  ];
+
+  const ROUTINES = {
+    A: {
+      type: 'strength',
+      name: 'Día A: Empuje + Tracc. Horizontal',
+      prep: 'Isométrico pared (3x45") · ¡Obligatorio!',
+      exercises: [
+        { id: 'ss1', name: 'Superserie Principal', isSS: true, series: 4, rest: 120,
+          subs: [
+            { id: 'bench', name: 'Press Banca', reps: 6, weight: 70 },
+            { id: 'pull',  name: 'Dominadas',   reps: 5, weight: 0 }
+          ]
+        },
+        { id: 'sq',  name: 'Sentadilla Frontal', series: 4, reps: 8, weight: 40, rest: 60 },
+        { id: 'row', name: 'Remo con Barra',     series: 4, reps: 6, weight: 60, rest: 60 },
+        { id: 'sg1', name: 'Serie Gigante Accesorios', isSS: true, series: 3, rest: 90,
+          subs: [
+            { id: 'fly',  name: 'Aperturas',       reps: 10, weight: 10 },
+            { id: 'drow', name: 'Remo Mancuerna',  reps: 10, weight: 22 },
+            { id: 'curl', name: 'Curl Bíceps',     reps: 10, weight: 10 }
+          ]
+        }
+      ]
+    },
+    B: {
+      type: 'strength',
+      name: 'Día B: Empuje + Tracc. Vertical',
+      prep: 'Monster Walk / Glute Bridge (3x15)',
+      exercises: [
+        { id: 'ss2', name: 'Superserie Principal', isSS: true, series: 4, rest: 120,
+          subs: [
+            { id: 'mil', name: 'Press Militar',    reps: 6, weight: 45 },
+            { id: 'rdl', name: 'Peso Muerto RDL',  reps: 6, weight: 100 }
+          ]
+        },
+        { id: 'lun', name: 'Zancada Invertida', series: 3, reps: 8, weight: 18, rest: 60 },
+        { id: 'dip', name: 'Fondos Paralelas',   series: 4, reps: 7, weight: 0, rest: 60 },
+        { id: 'sg2', name: 'Serie Gigante Accesorios', isSS: true, series: 3, rest: 90,
+          subs: [
+            { id: 'lat',  name: 'Elev. Laterales', reps: 10, weight: 10 },
+            { id: 'fre',  name: 'Press Francés',   reps: 10, weight: 10 },
+            { id: 'bird', name: 'Pájaros',         reps: 10, weight: 10 }
+          ]
+        }
+      ]
+    },
+    KB: {
+      type: 'kb',
+      name: 'Sesión Kettlebell',
+      prep: 'Movilidad articular completa',
+      exercises: []
+    }
+  };
+
+  /* ============================================================
+     UI BASE
+     ============================================================ */
+  const Button3D = ({ onClick, children, color = 'emerald', disabled = false, className = '', type = 'button' }) => {
+    const colors = {
+      emerald: 'bg-emerald-500 shadow-[0_6px_0_rgb(5,150,105)] active:shadow-none border-emerald-400/20 text-zinc-950',
+      zinc:    'bg-zinc-800 shadow-[0_6px_0_rgb(39,39,42)] active:shadow-none border-zinc-700 text-zinc-100',
+      white:   'bg-zinc-100 shadow-[0_6px_0_rgb(161,161,170)] active:shadow-none border-white text-zinc-950',
+      red:     'bg-red-600 shadow-[0_6px_0_rgb(127,29,29)] active:shadow-none border-red-500/20 text-white'
+    };
+    return (
+      <button
+        type={type}
+        disabled={disabled}
+        onClick={onClick}
+        className={`relative ${colors[color]} active:translate-y-[6px] transition-all rounded-2xl font-black uppercase tracking-widest text-xs flex items-center justify-center gap-2 border px-6 py-5 ${className} ${disabled ? 'opacity-50 grayscale cursor-not-allowed' : ''}`}
+      >
+        {children}
+      </button>
+    );
+  };
+
+  const KPIBar = ({ label, current, target }) => {
+    const sc = isNaN(current) || current == null ? 0 : current;
+    const st = !target || isNaN(target) ? 1 : target;
+    const pct = Math.min(100, Math.round((sc / st) * 100));
+    return (
+      <div className="mb-4 last:mb-0">
+        <div className="flex justify-between text-[10px] font-bold text-zinc-500 uppercase mb-1.5 tracking-widest">
+          <span>{label}</span>
+          <span className="text-zinc-200">{sc} / {st} KG</span>
+        </div>
+        <div className="h-2.5 bg-zinc-950 rounded-full border border-zinc-800/50 overflow-hidden shadow-inner">
+          <div className="h-full bg-emerald-500 transition-all duration-1000" style={{ width: `${pct}%` }} />
+        </div>
+      </div>
+    );
+  };
+
+  const Confirm = ({ open, title, message, confirmLabel = 'Borrar', confirmColor = 'red', onConfirm, onCancel }) => {
+    if (!open) return null;
+    return (
+      <div className="fixed inset-0 bg-black/90 backdrop-blur-2xl z-[80] flex justify-center items-center p-6 anim-fade">
+        <div className="bg-zinc-900 border border-zinc-800 rounded-[2.5rem] w-full max-w-sm p-8 shadow-2xl">
+          <h3 className="text-sm font-black uppercase tracking-widest mb-3">{title}</h3>
+          <p className="text-zinc-400 text-xs leading-relaxed mb-8">{message}</p>
+          <div className="grid grid-cols-2 gap-3">
+            <Button3D onClick={onCancel} color="zinc">Cancelar</Button3D>
+            <Button3D onClick={onConfirm} color={confirmColor}>{confirmLabel}</Button3D>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  /* Input numérico que acepta coma o punto. */
+  const NumberInput = ({ value, onChange, suffix, large = false, disabled = false, placeholder = '', integer = false }) => (
+    <div className="flex-1 relative min-w-0">
+      <input
+        type="text"
+        inputMode={integer ? 'numeric' : 'decimal'}
+        pattern={integer ? '[0-9]*' : '[0-9]*[.,]?[0-9]*'}
+        value={value === '' || value == null ? '' : value}
+        placeholder={placeholder}
+        disabled={disabled}
+        onChange={e => onChange(parseNum(e.target.value))}
+        className={`w-full bg-zinc-950 border border-zinc-800 rounded-2xl ${large ? 'p-5 text-2xl' : 'p-4 text-xl'} text-center font-black outline-none focus:border-emerald-500 transition-colors`} />
+      {suffix && (
+        <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] font-bold text-zinc-600 uppercase pointer-events-none">{suffix}</span>
+      )}
+    </div>
+  );
+
+  /* ============================================================
+     APP
+     ============================================================ */
+  const App = () => {
+    const [tab, setTab] = useState('dashboard');
+    const [flow, setFlow] = useState('idle');
+
+    const [workouts, setWorkouts] = useState([]);
+    const [walks, setWalks] = useState([]);
+    const [health, setHealth] = useState([]);
+
+    const [activeRoutine, setActiveRoutine] = useState(null);
+    const [exerciseIndex, setExerciseIndex] = useState(0);
+    const [currentSets, setCurrentSets] = useState([]);
+    const [sessionLog, setSessionLog] = useState([]);
+    const [sessionStartedAt, setSessionStartedAt] = useState(0);
+    const [isSaving, setIsSaving] = useState(false);
+
+    const [showWalkModal, setShowWalkModal] = useState(false);
+    const [showHelpModal, setShowHelpModal] = useState(false);
+    const [walkInput, setWalkInput] = useState('');
+    const [healthInput, setHealthInput] = useState({ weight: '', waist: '', note: '' });
+    const [confirm, setConfirm] = useState(null);
+    const [resumePrompt, setResumePrompt] = useState(null);
+    const [expandedWorkouts, setExpandedWorkouts] = useState(() => new Set());
+    const [editingWorkout, setEditingWorkout] = useState(null);
+
+    const [endsAt, setEndsAt] = useState(0);
+    const [timer, setTimer] = useState(0);
+    const [timerActive, setTimerActive] = useState(false);
+    const [kbTime, setKbTime] = useState('');
+    const [kbRounds, setKbRounds] = useState('');
+
+    const wakeLockRef = useRef(null);
+    const sessionLoadedRef = useRef(false);
+
+    /* --- Carga inicial + detección de sesión activa --- */
+    useEffect(() => {
+      const lw = storage.load(KEYS.WORKOUTS, null);
+      const lk = storage.load(KEYS.WALKS, null);
+      const lh = storage.load(KEYS.HEALTH, null);
+
+      let w = (lw && lw.length > 0) ? lw : SEED_WORKOUTS;
+      let h = (lh && lh.length > 0) ? lh : SEED_HEALTH;
+      const k = lk || [];
+
+      // Retrofit de id en entrenos antiguos sin id
+      let migratedW = false;
+      w = w.map(wk => {
+        if (!wk.id) { migratedW = true; return { ...wk, id: uid() }; }
+        return wk;
+      });
+      // Retrofit de timestamp en pesajes antiguos sin timestamp
+      let migratedH = false;
+      h = h.map(he => {
+        if (!he.timestamp) { migratedH = true; return { ...he, timestamp: dateStrToTs(he.date) || Date.now() }; }
+        return he;
+      });
+
+      if (!lw || lw.length === 0 || migratedW) storage.save(KEYS.WORKOUTS, w);
+      if (!lh || lh.length === 0 || migratedH) storage.save(KEYS.HEALTH, h);
+      if (!lk) storage.save(KEYS.WALKS, k);
+
+      setWorkouts(w);
+      setHealth(h);
+      setWalks(k);
+
+      // Detectar sesión sin acabar
+      const session = storage.load(KEYS.SESSION, null);
+      if (session && session.flow && session.flow !== 'idle' && session.flow !== 'finished') {
+        setResumePrompt(session);
+      }
+      sessionLoadedRef.current = true;
+    }, []);
+
+    /* --- Service Worker --- */
+    useEffect(() => {
+      if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
+        navigator.serviceWorker.register('./sw.js').catch(() => {});
+      }
+    }, []);
+
+    /* --- Auto-guardado de sesión activa --- */
+    useEffect(() => {
+      if (!sessionLoadedRef.current) return;
+      const isActive = flow === 'prep' || flow === 'workout' || flow === 'summary';
+      if (isActive && activeRoutine) {
+        storage.save(KEYS.SESSION, {
+          flow, activeRoutine, exerciseIndex, currentSets, sessionLog,
+          sessionStartedAt, kbTime, kbRounds
+        });
+      } else {
+        storage.remove(KEYS.SESSION);
+      }
+    }, [flow, activeRoutine, exerciseIndex, currentSets, sessionLog, kbTime, kbRounds]);
+
+    /* --- Wake Lock (mantiene pantalla encendida durante el entreno) --- */
+    useEffect(() => {
+      const needLock = flow === 'prep' || flow === 'workout' || flow === 'summary' || timerActive;
+      let cancelled = false;
+
+      const acquire = async () => {
+        if (!('wakeLock' in navigator)) return;
+        try {
+          const lock = await navigator.wakeLock.request('screen');
+          if (cancelled) { lock.release().catch(() => {}); return; }
+          wakeLockRef.current = lock;
+          lock.addEventListener('release', () => { wakeLockRef.current = null; });
+        } catch (e) {}
+      };
+      const release = () => {
+        if (wakeLockRef.current) {
+          wakeLockRef.current.release().catch(() => {});
+          wakeLockRef.current = null;
+        }
+      };
+      const onVisibility = () => {
+        if (document.visibilityState === 'visible' && needLock && !wakeLockRef.current) acquire();
+      };
+
+      if (needLock) acquire(); else release();
+      document.addEventListener('visibilitychange', onVisibility);
+      return () => {
+        cancelled = true;
+        document.removeEventListener('visibilitychange', onVisibility);
+        release();
+      };
+    }, [flow, timerActive]);
+
+    /* --- Timer basado en timestamp (inmune a background) --- */
+    useEffect(() => {
+      if (!timerActive) return;
+      const tick = () => {
+        const remaining = Math.ceil((endsAt - Date.now()) / 1000);
+        if (remaining <= 0) {
+          setTimer(0);
+          setTimerActive(false);
+          beep();
+          vibrate([220, 120, 220, 120, 220]);
+        } else {
+          setTimer(remaining);
+        }
+      };
+      tick();
+      const id = setInterval(tick, 250);
+      return () => clearInterval(id);
+    }, [timerActive, endsAt]);
+
+    /* ========================================================
+       HELPERS DE NEGOCIO
+       ======================================================== */
+    const persist = (key, value, setter) => { setter(value); storage.save(key, value); };
+
+    /* Devuelve mapa { exerciseId → [{reps, weight}, ...] } de la última sesión
+       cuya rutina coincide. */
+    const getLastSessionValues = (routineName) => {
+      for (let i = workouts.length - 1; i >= 0; i--) {
+        if (workouts[i].routine === routineName) {
+          const map = {};
+          (workouts[i].log || []).forEach(e => { map[e.id] = e.sets || []; });
+          return { map, when: workouts[i].timestamp };
+        }
+      }
+      return null;
+    };
+
+    const handleAddMetric = () => {
+      const w = parseNum(healthInput.weight);
+      const c = parseNum(healthInput.waist);
+      if (typeof w !== 'number' || typeof c !== 'number' || w <= 0 || c <= 0) return;
+      const entry = {
+        date: new Date().toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit' }),
+        weight: w,
+        waist: c,
+        note: healthInput.note.trim() || '-',
+        timestamp: Date.now()
+      };
+      persist(KEYS.HEALTH, [...health, entry], setHealth);
+      setHealthInput({ weight: '', waist: '', note: '' });
+      vibrate(20);
+    };
+
+    const askDeleteMetric = (idx) => setConfirm({
+      title: 'Borrar registro',
+      message: '¿Eliminar este pesaje del histórico?',
+      onConfirm: () => {
+        persist(KEYS.HEALTH, health.filter((_, i) => i !== idx), setHealth);
+        setConfirm(null);
+      }
+    });
+
+    const askDeleteWorkout = (idx) => {
+      const target = workouts[idx];
+      setConfirm({
+        title: 'Borrar entrenamiento',
+        message: '¿Eliminar esta sesión completa? No se puede deshacer.',
+        onConfirm: () => {
+          persist(KEYS.WORKOUTS, workouts.filter((_, i) => i !== idx), setWorkouts);
+          setExpandedWorkouts(prev => {
+            const n = new Set();
+            prev.forEach(id => { if (id !== target.id) n.add(id); });
+            return n;
+          });
+          setConfirm(null);
+        }
+      });
+    };
+
+    const askDeleteWalk = (idx) => setConfirm({
+      title: 'Borrar caminata',
+      message: '¿Eliminar este registro NEAT?',
+      onConfirm: () => {
+        persist(KEYS.WALKS, walks.filter((_, i) => i !== idx), setWalks);
+        setConfirm(null);
+      }
+    });
+
+    const toggleExpand = (id) => {
+      setExpandedWorkouts(prev => {
+        const n = new Set(prev);
+        if (n.has(id)) n.delete(id); else n.add(id);
+        return n;
+      });
+    };
+
+    /* --- Edición de entrenamiento existente --- */
+    const startEditWorkout = (idx) => {
+      const w = workouts[idx];
+      setEditingWorkout({
+        idx,
+        data: {
+          ...w,
+          log: (w.log || []).map(ex => ({
+            ...ex,
+            sets: (ex.sets || []).map(s => ({ reps: s.reps, weight: s.weight }))
+          }))
+        }
+      });
+    };
+    const cancelEditWorkout = () => setEditingWorkout(null);
+    const updateEditSet = (exIdx, setIdx, field, value) => {
+      setEditingWorkout(prev => ({
+        ...prev,
+        data: { ...prev.data,
+          log: prev.data.log.map((ex, i) => i === exIdx
+            ? { ...ex, sets: ex.sets.map((s, j) => j === setIdx ? { ...s, [field]: value } : s) }
+            : ex)
+        }
+      }));
+    };
+    const removeEditSet = (exIdx, setIdx) => {
+      setEditingWorkout(prev => ({ ...prev, data: { ...prev.data,
+        log: prev.data.log.map((ex, i) => i === exIdx ? { ...ex, sets: ex.sets.filter((_, j) => j !== setIdx) } : ex)
+      }}));
+    };
+    const addEditSet = (exIdx) => {
+      setEditingWorkout(prev => ({ ...prev, data: { ...prev.data,
+        log: prev.data.log.map((ex, i) => {
+          if (i !== exIdx) return ex;
+          const last = ex.sets[ex.sets.length - 1] || { reps: 0, weight: 0 };
+          return { ...ex, sets: [...ex.sets, { reps: last.reps, weight: last.weight }] };
+        })
+      }}));
+    };
+    const removeEditExercise = (exIdx) => {
+      setEditingWorkout(prev => ({ ...prev, data: { ...prev.data, log: prev.data.log.filter((_, i) => i !== exIdx) }}));
+    };
+    const saveEditWorkout = () => {
+      const cleaned = {
+        ...editingWorkout.data,
+        log: editingWorkout.data.log
+          .map(ex => ({ ...ex, sets: ex.sets.map(s => ({ reps: Number(s.reps) || 0, weight: Number(s.weight) || 0 })) }))
+          .filter(ex => ex.sets.length > 0)
+          .map(ex => ({ ...ex, vol: ex.sets.reduce((a, b) => a + b.reps * b.weight, 0) }))
+      };
+      persist(KEYS.WORKOUTS, workouts.map((w, i) => i === editingWorkout.idx ? cleaned : w), setWorkouts);
+      setEditingWorkout(null);
+      vibrate(30);
+    };
+
+    /* --- Reset --- */
+    const resetToDashboard = () => {
+      setFlow('idle');
+      setTab('dashboard');
+      setActiveRoutine(null);
+      setExerciseIndex(0);
+      setCurrentSets([]);
+      setSessionLog([]);
+      setSessionStartedAt(0);
+      setTimer(0);
+      setTimerActive(false);
+      setKbTime('');
+      setKbRounds('');
+      storage.remove(KEYS.SESSION);
+    };
+
+    /* --- Cálculos derivados --- */
+    const sortedHealth = [...health].sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
+    const lastHealth = sortedHealth.length > 0 ? sortedHealth[sortedHealth.length - 1] : null;
+    const currentWeight = lastHealth ? lastHealth.weight : 0;
+    const currentWaist  = lastHealth ? lastHealth.waist  : 0;
+
+    const calc1RM = (w, r) => r === 1 ? w : Math.round(w * (36 / (37 - r)));
+    const get1RM = (exId) => {
+      let best = 0;
+      workouts.forEach(w => (w.log || []).forEach(entry => {
+        if (entry.id === exId) {
+          (entry.sets || []).forEach(s => {
+            if (s.weight > 0 && s.reps > 0 && s.reps <= 12) {
+              const rm = calc1RM(s.weight, s.reps);
+              if (rm > best) best = rm;
+            }
+          });
+        }
+      }));
+      return best;
+    };
+
+    const getDaysTrained = (days) => {
+      const limit = Date.now() - days * 86400000;
+      return workouts.filter(w => w.timestamp > limit).length;
+    };
+
+    /* --- Calendario semanal --- */
+    const renderActivityLine = () => {
+      const today = new Date(); today.setHours(0, 0, 0, 0);
+      const days = [];
+      for (let i = 6; i >= 0; i--) {
+        const d = new Date(today); d.setDate(d.getDate() - i);
+        const isW = workouts.some(w => new Date(w.timestamp).toDateString() === d.toDateString());
+        const isA = walks.some(w => new Date(w.timestamp).toDateString() === d.toDateString());
+        days.push({
+          n: d.toLocaleDateString('es-ES', { weekday: 'short' }).charAt(0).toUpperCase(),
+          d: d.getDate(), isW, isA, isToday: i === 0
+        });
+      }
+      return (
+        <div className="flex justify-between items-center px-1">
+          {days.map((day, i) => (
+            <div key={i} className="flex flex-col items-center gap-2">
+              <span className={`text-[10px] font-bold ${day.isToday ? 'text-emerald-500' : 'text-zinc-500'}`}>{day.isToday ? 'HOY' : day.n}</span>
+              <div className={`h-8 rounded-full flex items-center justify-center border-2 transition-all ${
+                day.isW && day.isA ? 'w-14 bg-emerald-500 border-emerald-400 gap-1.5 shadow-[0_0_10px_rgba(16,185,129,0.4)]' :
+                day.isW ? 'w-8 bg-emerald-500 border-emerald-400 shadow-[0_0_10px_rgba(16,185,129,0.4)]' :
+                day.isA ? 'w-8 bg-teal-500/10 border-teal-500 shadow-[0_0_10px_rgba(20,184,166,0.2)]' :
+                'w-8 bg-zinc-950 border-zinc-900'
+              }`}>
+                {day.isW && <LayoutList size={12} className="text-zinc-950" />}
+                {day.isA && <Activity size={12} className={day.isW && day.isA ? 'text-zinc-950' : 'text-teal-500'} />}
+              </div>
+              <span className={`text-[10px] font-bold ${day.isW || day.isA ? 'text-emerald-500' : 'text-zinc-700'}`}>{day.d}</span>
+            </div>
+          ))}
+        </div>
+      );
+    };
+
+    /* ========================================================
+       FLUJO DE SESIÓN
+       ======================================================== */
+    const startSession = (key) => {
+      setActiveRoutine(ROUTINES[key]);
+      setExerciseIndex(0);
+      setSessionLog([]);
+      setKbTime('');
+      setKbRounds('');
+      setSessionStartedAt(Date.now());
+      setFlow('prep');
+    };
+
+    /* Inicializa los inputs de un ejercicio.
+       Si hay sesión previa de la misma rutina → pre-llena con esos valores. */
+    const initExercise = (ex, isKb = false, lastValuesArg = null) => {
+      const lastValues = lastValuesArg || (activeRoutine ? getLastSessionValues(activeRoutine.name) : null);
+      const map = lastValues?.map || {};
+
+      if (isKb) {
+        setCurrentSets(KB_DEFAULTS.map(d => {
+          const last = map[d.id]?.[0];
+          return { name: d.name, id: d.id, r: last?.reps ?? d.reps, w: last?.weight ?? d.weight };
+        }));
+        return;
+      }
+
+      const series = ex.series || 1;
+      const s = [];
+      for (let i = 0; i < series; i++) {
+        if (ex.isSS) {
+          s.push({
+            completed: false,
+            subs: ex.subs.map(sub => {
+              const last = map[sub.id]?.[i];
+              return { r: last?.reps ?? sub.reps, w: last?.weight ?? sub.weight };
+            })
+          });
+        } else {
+          const last = map[ex.id]?.[i];
+          s.push({
+            r: last?.reps ?? ex.reps,
+            w: last?.weight ?? ex.weight,
+            completed: false
+          });
+        }
+      }
+      setCurrentSets(s);
+    };
+
+    const startTimer = (seconds) => {
+      setEndsAt(Date.now() + seconds * 1000);
+      setTimer(seconds);
+      setTimerActive(true);
+    };
+
+    const completeSet = (idx) => {
+      vibrate(30);
+      setCurrentSets(prev => prev.map((s, i) => i === idx ? { ...s, completed: true } : s));
+      const restTime = activeRoutine.exercises[exerciseIndex].rest || 60;
+      startTimer(restTime);
+    };
+
+    const reopenSet = (idx) => {
+      setCurrentSets(prev => prev.map((s, i) => i === idx ? { ...s, completed: false } : s));
+    };
+
+    const updateSimpleSet = (idx, field, value) => {
+      setCurrentSets(prev => prev.map((s, i) => i === idx ? { ...s, [field]: value } : s));
+    };
+
+    const updateSubSet = (setIdx, subIdx, field, value) => {
+      setCurrentSets(prev => prev.map((s, i) => i === setIdx
+        ? { ...s, subs: s.subs.map((sb, j) => j === subIdx ? { ...sb, [field]: value } : sb) }
+        : s));
+    };
+
+    const doNextStep = () => {
+      const ex = activeRoutine.exercises[exerciseIndex];
+      const newEntries = [];
+      if (ex.isSS) {
+        ex.subs.forEach((sub, sIdx) => {
+          const sets = currentSets.filter(s => s.completed).map(lap => ({
+            reps: Number(lap.subs[sIdx].r) || 0,
+            weight: Number(lap.subs[sIdx].w) || 0
+          }));
+          if (sets.length > 0) {
+            newEntries.push({
+              id: sub.id, name: sub.name, sets,
+              vol: sets.reduce((a, b) => a + b.reps * b.weight, 0)
+            });
+          }
+        });
+      } else {
+        const sets = currentSets.filter(s => s.completed).map(s => ({
+          reps: Number(s.r) || 0, weight: Number(s.w) || 0
+        }));
+        if (sets.length > 0) {
+          newEntries.push({
+            id: ex.id, name: ex.name, sets,
+            vol: sets.reduce((a, b) => a + b.reps * b.weight, 0)
+          });
+        }
+      }
+      const log = [...sessionLog, ...newEntries];
+      setSessionLog(log);
+
+      if (exerciseIndex < activeRoutine.exercises.length - 1) {
+        const nx = exerciseIndex + 1;
+        setExerciseIndex(nx);
+        initExercise(activeRoutine.exercises[nx]);
+      } else {
+        setFlow('summary');
+      }
+    };
+
+    const nextStep = () => {
+      const unsealed = currentSets.filter(s => !s.completed).length;
+      if (unsealed > 0) {
+        setConfirm({
+          title: `${unsealed} serie${unsealed === 1 ? '' : 's'} sin sellar`,
+          message: 'Solo se guardarán las series selladas. ¿Continuar de todos modos?',
+          confirmLabel: 'Continuar',
+          confirmColor: 'emerald',
+          onConfirm: () => { setConfirm(null); doNextStep(); }
+        });
+        return;
+      }
+      doNextStep();
+    };
+
+    const handleFinishKB = () => {
+      const rounds = Math.max(1, Number(kbRounds) || 1);
+      const time = kbTime;
+      const log = currentSets
+        .filter(s => Number(s.r) > 0 || Number(s.w) > 0)
+        .map(s => {
+          const reps = Number(s.r) || 0;
+          const weight = Number(s.w) || 0;
+          const sets = Array(rounds).fill(null).map(() => ({ reps, weight }));
+          return { id: s.id, name: s.name, sets, vol: reps * weight * rounds };
+        });
+      const customName = time ? `Kettlebell (${rounds} Rondas - ${time} min)` : `Kettlebell (${rounds} Rondas)`;
+      setActiveRoutine({ ...activeRoutine, customName, name: customName });
+      setSessionLog(log);
+      setFlow('summary');
+    };
+
+    const askExitWorkout = () => setConfirm({
+      title: 'Salir del entrenamiento',
+      message: 'Se descartará la sesión activa. Las series ya guardadas en otras sesiones no se ven afectadas.',
+      confirmLabel: 'Salir',
+      confirmColor: 'red',
+      onConfirm: () => { setConfirm(null); resetToDashboard(); }
+    });
+
+    const saveWorkout = () => {
+      if (sessionLog.length === 0) {
+        setConfirm({
+          title: 'Sin series registradas',
+          message: 'No hay series completadas en esta sesión. Vuelve atrás y sella al menos una serie.',
+          confirmLabel: 'OK', confirmColor: 'zinc',
+          onConfirm: () => setConfirm(null)
+        });
+        return;
+      }
+      setIsSaving(true);
+      vibrate([40, 60, 40]);
+      const name = activeRoutine.customName || activeRoutine.name;
+      const entry = { id: uid(), timestamp: Date.now(), routine: name, log: sessionLog };
+      const updated = [...workouts, entry];
+      persist(KEYS.WORKOUTS, updated, setWorkouts);
+      setTimeout(() => {
+        setIsSaving(false);
+        storage.remove(KEYS.SESSION);
+        setFlow('finished');
+      }, 300);
+    };
+
+    /* --- Reanudación de sesión --- */
+    const resumeSession = () => {
+      const s = resumePrompt;
+      setActiveRoutine(s.activeRoutine);
+      setExerciseIndex(s.exerciseIndex || 0);
+      setCurrentSets(s.currentSets || []);
+      setSessionLog(s.sessionLog || []);
+      setSessionStartedAt(s.sessionStartedAt || Date.now());
+      setKbTime(s.kbTime || '');
+      setKbRounds(s.kbRounds || '');
+      setFlow(s.flow);
+      setResumePrompt(null);
+    };
+    const discardSession = () => {
+      storage.remove(KEYS.SESSION);
+      setResumePrompt(null);
+    };
+
+    /* --- Export CSV --- */
+    const exportData = (mode) => {
+      const today = new Date().toLocaleDateString('es-ES').replace(/\//g, '-');
+      let csv = ''; let filename = '';
+      if (mode === 'workout') {
+        csv = 'Fecha,Hora,Rutina,Ejercicio,Serie,Reps,Peso\n';
+        workouts.forEach(w => {
+          const dt = new Date(w.timestamp);
+          const d = dt.toLocaleDateString('es-ES');
+          const h = dt.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+          (w.log || []).forEach(l => (l.sets || []).forEach((s, i) => {
+            csv += [d, h, csvCell(w.routine), csvCell(l.name), i + 1, s.reps, s.weight].join(',') + '\n';
+          }));
+        });
+        filename = `Entrenos_Alex_${today}.csv`;
+      } else if (mode === 'health') {
+        csv = 'Fecha,Peso (KG),Cintura (CM),Notas\n';
+        sortedHealth.forEach(h => {
+          csv += [h.date, h.weight, h.waist, csvCell(h.note || '-')].join(',') + '\n';
+        });
+        filename = `Salud_Alex_${today}.csv`;
+      } else if (mode === 'walks') {
+        csv = 'Fecha,Hora,Minutos\n';
+        walks.forEach(w => {
+          const dt = new Date(w.timestamp);
+          csv += [dt.toLocaleDateString('es-ES'), dt.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }), w.minutes].join(',') + '\n';
+        });
+        filename = `Caminatas_Alex_${today}.csv`;
+      }
+      if (!downloadCsv(filename, csv)) {
+        setConfirm({ title: 'Descarga bloqueada', message: 'Tu dispositivo no permite descargas directas.',
+          confirmLabel: 'OK', confirmColor: 'zinc', onConfirm: () => setConfirm(null) });
+      }
+    };
+
+    const exportAll = () => {
+      const today = new Date().toLocaleDateString('es-ES').replace(/\//g, '-');
+      let csv = '=== ENTRENOS ===\n';
+      csv += 'Fecha,Hora,Rutina,Ejercicio,Serie,Reps,Peso,Volumen Ejercicio (KG)\n';
+      workouts.forEach(w => {
+        const dt = new Date(w.timestamp);
+        const d = dt.toLocaleDateString('es-ES');
+        const h = dt.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+        (w.log || []).forEach(l => (l.sets || []).forEach((s, i) => {
+          csv += [d, h, csvCell(w.routine), csvCell(l.name), i + 1, s.reps, s.weight, l.vol || ''].join(',') + '\n';
+        }));
+      });
+      csv += '\n=== NEAT (Caminatas) ===\n';
+      csv += 'Fecha,Hora,Minutos\n';
+      walks.forEach(w => {
+        const dt = new Date(w.timestamp);
+        csv += [dt.toLocaleDateString('es-ES'), dt.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }), w.minutes].join(',') + '\n';
+      });
+      csv += '\n=== SALUD (Pesajes) ===\n';
+      csv += 'Fecha,Peso (KG),Cintura (CM),Notas\n';
+      sortedHealth.forEach(h => {
+        csv += [h.date, h.weight, h.waist, csvCell(h.note || '-')].join(',') + '\n';
+      });
+      if (!downloadCsv(`Entreno_Alex_TODO_${today}.csv`, csv)) {
+        setConfirm({ title: 'Descarga bloqueada', message: 'Tu dispositivo no permite descargas directas.',
+          confirmLabel: 'OK', confirmColor: 'zinc', onConfirm: () => setConfirm(null) });
+      }
+    };
+
+    const summarizeWorkout = (w) => {
+      const exCount = (w.log || []).length;
+      const totalVol = (w.log || []).reduce((a, b) => a + (b.vol || 0), 0);
+      const totalSets = (w.log || []).reduce((a, b) => a + (b.sets || []).length, 0);
+      return { exCount, totalVol, totalSets };
+    };
+
+    const totalKgSession = sessionLog.reduce((a, b) => a + (b.vol || 0), 0);
+    const lastSessionInfo = activeRoutine ? getLastSessionValues(activeRoutine.name) : null;
+
+    /* ========================================================
+       RENDER
+       ======================================================== */
+    return (
+      <div className="min-h-screen bg-zinc-950 text-zinc-100 selection:bg-emerald-500/30 overflow-x-hidden pb-nav">
+
+        {/* DASHBOARD */}
+        {tab === 'dashboard' && flow === 'idle' && (
+          <div className="p-5 space-y-6 anim-fade">
+            <Button3D onClick={() => setFlow('selection')} className="w-full text-sm" color="emerald">
+              <Play size={20} fill="currentColor" className="mr-1 mb-0.5" /> Iniciar Sesión de Hoy
+            </Button3D>
+
+            <section className="bg-zinc-900/60 border border-zinc-800 p-6 rounded-[2rem] shadow-xl">
+              <h3 className="text-[10px] font-black uppercase text-zinc-500 tracking-widest mb-6 flex items-center gap-2">
+                <Calendar size={14} className="text-emerald-500" /> Frecuencia
+              </h3>
+              <div className="grid grid-cols-3 gap-4">
+                {[7, 15, 30].map(d => (
+                  <div key={d} className="bg-zinc-950/50 p-4 rounded-2xl border border-zinc-800/50 text-center">
+                    <p className="text-2xl font-black">{getDaysTrained(d)}</p>
+                    <p className="text-[9px] font-bold text-zinc-500 uppercase mt-1">{d} Días</p>
+                  </div>
+                ))}
+              </div>
+            </section>
+
+            <section className="bg-zinc-900/60 border border-zinc-800 p-6 rounded-[2rem] shadow-xl">
+              <h3 className="text-[10px] font-black uppercase text-zinc-500 tracking-widest mb-6 flex items-center gap-2">
+                <Activity size={14} className="text-emerald-500" /> Actividad Semanal
+              </h3>
+              {renderActivityLine()}
+            </section>
+
+            <section className="bg-zinc-900/60 border border-zinc-800 p-6 rounded-[2rem] shadow-xl">
+              <h3 className="text-[10px] font-black uppercase text-zinc-500 tracking-widest mb-6 flex items-center gap-2">
+                <Award size={14} className="text-emerald-500" /> Fuerza Máxima (1RM)
+              </h3>
+              <KPIBar label="Press Banca"   current={get1RM('bench')} target={Math.round((currentWeight || 95) * 1)}    />
+              <KPIBar label="RDL"           current={get1RM('rdl')}   target={Math.round((currentWeight || 95) * 1.8)} />
+              <KPIBar label="Press Militar" current={get1RM('mil')}   target={Math.round((currentWeight || 95) * 0.75)}/>
+              <KPIBar label="Sentadilla"    current={get1RM('sq')}    target={Math.round((currentWeight || 95) * 1.5)} />
+            </section>
+
+            <section className="grid grid-cols-1 gap-4">
+              <div className="bg-zinc-900/60 border border-zinc-800 p-6 rounded-[2rem] flex justify-between items-center relative overflow-hidden">
+                <div className="absolute right-0 top-0 w-24 h-full bg-emerald-500/5 -skew-x-12 translate-x-12" />
+                <div>
+                  <p className="text-[10px] font-black text-zinc-500 uppercase flex items-center gap-2 tracking-widest">
+                    <Scale size={14} className="text-emerald-500" /> Peso
+                  </p>
+                  <p className="text-4xl font-black mt-1">{currentWeight > 0 ? currentWeight : '--'} <span className="text-sm font-bold text-zinc-600">KG</span></p>
+                </div>
+                <div className="text-right z-10">
+                  <p className="text-[9px] font-black text-zinc-600 uppercase tracking-widest">Meta</p>
+                  <p className="text-xl font-black text-emerald-500">95.0</p>
+                </div>
+              </div>
+              <div className="bg-zinc-900/60 border border-zinc-800 p-6 rounded-[2rem] flex justify-between items-center relative overflow-hidden">
+                <div className="absolute right-0 top-0 w-24 h-full bg-teal-500/5 -skew-x-12 translate-x-12" />
+                <div>
+                  <p className="text-[10px] font-black text-zinc-500 uppercase flex items-center gap-2 tracking-widest">
+                    <Ruler size={14} className="text-teal-500" /> Cintura
+                  </p>
+                  <p className="text-4xl font-black mt-1">{currentWaist > 0 ? currentWaist : '--'} <span className="text-sm font-bold text-zinc-600">CM</span></p>
+                </div>
+                <div className="text-right z-10">
+                  <p className="text-[9px] font-black text-zinc-600 uppercase tracking-widest">Meta Salud</p>
+                  <p className={`text-xl font-black ${currentWaist > 0 && currentWaist < 94 ? 'text-emerald-500' : 'text-zinc-500'}`}>{'< 94'}</p>
+                </div>
+              </div>
+            </section>
+
+            <section className="pt-2">
+              <Button3D onClick={exportAll} color="zinc" className="w-full">
+                <Download size={18} className="text-emerald-500" />
+                Exportar Todo (CSV)
+              </Button3D>
+              <p className="text-[9px] font-bold text-zinc-600 uppercase tracking-widest text-center mt-3">
+                Entrenos · NEAT · Salud — Archivo único
+              </p>
+            </section>
+          </div>
+        )}
+
+        {/* SELECCIÓN */}
+        {flow === 'selection' && (
+          <div className="p-5 space-y-4 anim-slide">
+            <button onClick={() => setFlow('idle')} className="flex items-center gap-2 text-zinc-500 text-[10px] font-black uppercase tracking-widest mb-6 p-2 -ml-2">
+              <ArrowLeft size={14} /> Volver al Panel
+            </button>
+            <h2 className="text-sm font-black uppercase tracking-widest border-b border-zinc-800 pb-4 mb-4">Seleccionar Rutina</h2>
+            {Object.entries(ROUTINES).map(([k, r]) => {
+              const last = getLastSessionValues(r.name);
+              return (
+                <Button3D key={k} onClick={() => startSession(k)} color="zinc" className="w-full text-left justify-between py-6">
+                  <div className="flex flex-col items-start gap-1">
+                    <span className="text-[9px] text-emerald-500 tracking-widest">
+                      {last ? `Última: ${new Date(last.when).toLocaleDateString('es-ES', { day: '2-digit', month: 'short' })}` : 'Nueva rutina'}
+                    </span>
+                    <span className="text-base normal-case">{r.name}</span>
+                  </div>
+                  <ChevronRight size={24} className="text-zinc-600" />
+                </Button3D>
+              );
+            })}
+          </div>
+        )}
+
+        {/* PREP */}
+        {flow === 'prep' && activeRoutine && (
+          <div className="p-10 text-center space-y-10 anim-zoom mt-10">
+            <div className="flex justify-center">
+              <Anchor size={64} className="text-emerald-500 drop-shadow-[0_0_20px_rgba(16,185,129,0.3)]" />
+            </div>
+            <div>
+              <h2 className="text-[10px] font-black uppercase text-zinc-500 mb-4 tracking-[0.3em]">Preparación</h2>
+              <p className="text-2xl font-black uppercase leading-tight">{activeRoutine.prep}</p>
+              {lastSessionInfo && (
+                <p className="text-[10px] text-emerald-500/80 mt-6 tracking-widest font-bold">
+                  📋 Pre-cargados los pesos del{' '}
+                  {new Date(lastSessionInfo.when).toLocaleDateString('es-ES', { day: '2-digit', month: 'short' })}
+                </p>
+              )}
+            </div>
+            <Button3D onClick={() => {
+              setFlow('workout');
+              if (activeRoutine.type === 'kb') initExercise(null, true, lastSessionInfo);
+              else initExercise(activeRoutine.exercises[0], false, lastSessionInfo);
+            }} className="w-full text-sm">Todo Listo</Button3D>
+          </div>
+        )}
+
+        {/* WORKOUT - STRENGTH */}
+        {flow === 'workout' && activeRoutine && activeRoutine.type === 'strength' && (
+          <div className="p-5 space-y-6 anim-fade">
+            <div className="bg-zinc-900 border border-zinc-800 p-6 rounded-[2.5rem] shadow-2xl relative overflow-hidden">
+              <div className="absolute top-0 left-0 w-full h-1.5 bg-emerald-500" />
+              <button onClick={askExitWorkout} className="absolute top-4 right-4 text-zinc-600 hover:text-red-500 p-2.5 bg-zinc-950 rounded-xl border border-zinc-800 transition-colors">
+                <X size={18} />
+              </button>
+              <p className="text-[10px] font-black text-emerald-500 uppercase tracking-widest bg-emerald-500/10 px-3 py-1 rounded-lg inline-block mb-4 border border-emerald-500/20">
+                Bloque {exerciseIndex + 1} / {activeRoutine.exercises.length}
+              </p>
+              <h2 className="text-2xl font-black uppercase flex items-center gap-3 pr-12">
+                {activeRoutine.exercises[exerciseIndex].isSS && <LayoutList className="text-zinc-600" size={24} />}
+                {activeRoutine.exercises[exerciseIndex].name}
+              </h2>
+            </div>
+
+            <div className="space-y-4">
+              {currentSets.map((set, i) => (
+                <div key={i} className={`p-6 rounded-[2rem] border transition-all duration-300 ${set.completed ? 'bg-zinc-950/80 opacity-70 border-emerald-900/30' : 'bg-zinc-900 border-zinc-800 shadow-xl'}`}>
+                  <div className="flex justify-between items-center mb-6">
+                    <span className="font-black text-zinc-400 uppercase text-[10px] tracking-widest">Serie {i + 1}</span>
+                    {set.completed && (
+                      <div className="flex items-center gap-2">
+                        <button onClick={() => reopenSet(i)} className="text-zinc-500 hover:text-emerald-500 p-2.5 bg-zinc-950 rounded-xl transition-colors">
+                          <Edit size={16} />
+                        </button>
+                        <CheckCircle size={24} className="text-emerald-500" />
+                      </div>
+                    )}
+                  </div>
+
+                  {activeRoutine.exercises[exerciseIndex].isSS ? (
+                    <div className="space-y-6">
+                      {activeRoutine.exercises[exerciseIndex].subs.map((sub, sIdx) => (
+                        <div key={sIdx} className="space-y-2">
+                          <p className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">{sub.name}</p>
+                          <div className="flex gap-4">
+                            <NumberInput integer value={set.subs[sIdx].r}
+                              onChange={v => updateSubSet(i, sIdx, 'r', v)}
+                              disabled={set.completed} suffix="Reps" />
+                            <NumberInput value={set.subs[sIdx].w}
+                              onChange={v => updateSubSet(i, sIdx, 'w', v)}
+                              disabled={set.completed} suffix="KG" />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="flex gap-4 mb-2">
+                      <NumberInput integer large value={set.r}
+                        onChange={v => updateSimpleSet(i, 'r', v)}
+                        disabled={set.completed} suffix="Reps" />
+                      <NumberInput large value={set.w}
+                        onChange={v => updateSimpleSet(i, 'w', v)}
+                        disabled={set.completed} suffix="KG" />
+                    </div>
+                  )}
+
+                  {!set.completed && (
+                    <Button3D onClick={() => completeSet(i)} className="w-full mt-6" color="zinc">Sellar Serie</Button3D>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            <Button3D onClick={nextStep} className="w-full mt-10 text-sm" color="white">
+              {exerciseIndex < activeRoutine.exercises.length - 1 ? 'Continuar Rutina' : 'Finalizar Entrenamiento'}
+            </Button3D>
+          </div>
+        )}
+
+        {/* WORKOUT - KB */}
+        {flow === 'workout' && activeRoutine && activeRoutine.type === 'kb' && (
+          <div className="p-5 space-y-6 anim-fade">
+            <div className="bg-zinc-900 border border-zinc-800 p-6 rounded-[2.5rem] shadow-2xl relative overflow-hidden">
+              <div className="absolute top-0 left-0 w-full h-1.5 bg-emerald-500" />
+              <button onClick={askExitWorkout} className="absolute top-4 right-4 text-zinc-600 hover:text-red-500 p-2.5 bg-zinc-950 rounded-xl border border-zinc-800 transition-colors">
+                <X size={18} />
+              </button>
+              <h2 className="text-2xl font-black uppercase pr-12">Circuito Kettlebell</h2>
+              <p className="text-[10px] text-zinc-400 mt-2 uppercase tracking-widest">Rellena el peso y reps para cada ejercicio.</p>
+            </div>
+
+            <div className="space-y-4">
+              {currentSets.map((set, i) => (
+                <div key={i} className="p-5 rounded-[2rem] bg-zinc-900 border border-zinc-800 shadow-xl">
+                  <span className="font-black text-emerald-500 uppercase text-[10px] tracking-widest mb-3 block">{set.name}</span>
+                  <div className="flex gap-4">
+                    <NumberInput integer value={set.r}
+                      onChange={v => setCurrentSets(prev => prev.map((s, idx) => idx === i ? { ...s, r: v } : s))}
+                      suffix="Reps" />
+                    <NumberInput value={set.w}
+                      onChange={v => setCurrentSets(prev => prev.map((s, idx) => idx === i ? { ...s, w: v } : s))}
+                      suffix="KG" />
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="grid grid-cols-2 gap-4 mt-8">
+              <div className="bg-zinc-900 border border-zinc-800 p-5 rounded-[2rem] shadow-xl">
+                <h3 className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-3">Rondas Totales</h3>
+                <input type="text" inputMode="numeric" pattern="[0-9]*" value={kbRounds}
+                       onChange={e => setKbRounds(e.target.value.replace(/\D/g, ''))}
+                       placeholder="0"
+                       className="w-full bg-zinc-950 border border-zinc-800 rounded-2xl p-4 text-center font-black text-2xl outline-none focus:border-emerald-500 text-emerald-500 transition-colors" />
+              </div>
+              <div className="bg-zinc-900 border border-zinc-800 p-5 rounded-[2rem] shadow-xl">
+                <h3 className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-3">Minutos</h3>
+                <input type="text" inputMode="decimal" pattern="[0-9]*[.,]?[0-9]*" value={kbTime}
+                       onChange={e => setKbTime(e.target.value.replace(/[^0-9.,]/g, ''))}
+                       placeholder="0"
+                       className="w-full bg-zinc-950 border border-zinc-800 rounded-2xl p-4 text-center font-black text-2xl outline-none focus:border-emerald-500 text-emerald-500 transition-colors" />
+              </div>
+            </div>
+
+            <Button3D onClick={handleFinishKB} className="w-full mt-10 text-sm" color="white">
+              Finalizar Entrenamiento
+            </Button3D>
+          </div>
+        )}
+
+        {/* SUMMARY */}
+        {flow === 'summary' && (
+          <div className="p-5 space-y-8 anim-slide-lg">
+            <div className="bg-zinc-900 border border-zinc-800 p-8 sm:p-10 rounded-[3rem] text-center shadow-2xl relative overflow-hidden">
+              <div className="absolute top-0 left-0 w-full h-1.5 bg-emerald-500" />
+              <p className="text-[10px] font-black text-zinc-500 uppercase mb-4 tracking-[0.3em]">Tonelaje Total</p>
+              <h2 className="text-5xl sm:text-7xl font-black tabular-nums">
+                {totalKgSession} <span className="text-xl text-zinc-600 font-bold uppercase">KG</span>
+              </h2>
+              <p className="text-[10px] text-zinc-600 mt-4 uppercase tracking-widest">{sessionLog.length} ejercicios</p>
+            </div>
+            <Button3D disabled={isSaving} onClick={saveWorkout} className="w-full text-sm">
+              {isSaving ? 'Guardando...' : <><Save size={20} /> Guardar Registro</>}
+            </Button3D>
+          </div>
+        )}
+
+        {/* FINISHED */}
+        {flow === 'finished' && (
+          <div className="p-20 text-center space-y-10 anim-zoom mt-10">
+            <div className="flex justify-center">
+              <CheckCircle size={96} className="text-emerald-500 animate-pulse drop-shadow-[0_0_30px_rgba(16,185,129,0.4)]" />
+            </div>
+            <h2 className="text-3xl font-black uppercase tracking-widest leading-tight">Entrenamiento Completado</h2>
+            <Button3D onClick={resetToDashboard} color="zinc" className="w-full text-sm mt-10">Volver al Panel</Button3D>
+          </div>
+        )}
+
+        {/* TAB: HISTORIAL */}
+        {tab === 'history' && (
+          <div className="p-5 space-y-6 anim-fade">
+            <div className="flex justify-between items-center border-b border-zinc-800 pb-4 mb-6">
+              <h1 className="text-xl font-black uppercase tracking-widest flex items-center gap-3">
+                <LayoutList className="text-emerald-500" /> Entrenos
+              </h1>
+              <button onClick={() => setShowHelpModal(true)} className="text-emerald-500 flex items-center gap-2 text-[10px] font-black uppercase tracking-widest bg-emerald-500/10 px-3 py-1.5 rounded-xl border border-emerald-500/20 active:scale-95 transition-all">
+                <Info size={14} /> PWA Móvil
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              {workouts.length === 0 ? (
+                <p className="text-zinc-700 text-center py-20 text-xs uppercase font-black tracking-widest italic border-2 border-dashed border-zinc-900 rounded-[2rem]">No hay sesiones</p>
+              ) : (
+                [...workouts].reverse().map((w, revIdx) => {
+                  const idx = workouts.length - 1 - revIdx;
+                  const isOpen = expandedWorkouts.has(w.id);
+                  const sum = summarizeWorkout(w);
+                  return (
+                    <div key={w.id} className="bg-zinc-900/50 rounded-[2rem] border border-zinc-800 shadow-lg overflow-hidden">
+                      <button onClick={() => toggleExpand(w.id)} className="w-full text-left p-5 flex items-center justify-between gap-3 active:bg-zinc-800/30 transition-colors">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-zinc-100 font-black uppercase text-sm truncate">{w.routine}</p>
+                          <div className="flex items-center gap-3 mt-1.5 flex-wrap">
+                            <span className="text-[10px] font-bold text-emerald-500 tracking-widest">
+                              {new Date(w.timestamp).toLocaleString('es-ES', { dateStyle: 'short', timeStyle: 'short' })}
+                            </span>
+                            <span className="text-[10px] font-bold text-zinc-500 tracking-widest">
+                              {sum.exCount} EJ · {sum.totalSets} SERIES · {sum.totalVol} KG
+                            </span>
+                          </div>
+                        </div>
+                        <ChevronRight size={20} className={`flex-shrink-0 text-zinc-600 transition-transform ${isOpen ? 'rotate-90' : ''}`} />
+                      </button>
+
+                      {isOpen && (
+                        <div className="px-6 pb-6 pt-2 border-t border-zinc-800/60 anim-fade">
+                          <div className="space-y-4 mb-6">
+                            {(w.log || []).map((l, lIdx) => (
+                              <div key={lIdx}>
+                                <p className="text-[9px] font-black text-zinc-500 uppercase tracking-widest mb-2">
+                                  {l.name} <span className="text-zinc-700 ml-2">{l.vol ? `· ${l.vol} KG` : ''}</span>
+                                </p>
+                                <div className="flex flex-wrap gap-2">
+                                  {(l.sets || []).map((s, sIdx) => (
+                                    <span key={sIdx} className="bg-zinc-950 border border-zinc-800 text-zinc-300 text-[10px] font-bold px-3 py-1.5 rounded-xl tracking-widest">
+                                      {s.reps}×{s.weight}KG
+                                    </span>
+                                  ))}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                          <div className="grid grid-cols-2 gap-3">
+                            <Button3D onClick={() => startEditWorkout(idx)} color="zinc" className="w-full">
+                              <Edit size={16} /> Editar
+                            </Button3D>
+                            <Button3D onClick={() => askDeleteWorkout(idx)} color="red" className="w-full">
+                              <Trash2 size={16} /> Borrar
+                            </Button3D>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })
+              )}
+            </div>
+
+            {workouts.length > 0 && (
+              <div className="pt-6">
+                <Button3D onClick={() => exportData('workout')} color="zinc" className="w-full">
+                  <Download size={18} className="text-emerald-500" />
+                  Descargar CSV Entrenos
+                </Button3D>
+              </div>
+            )}
+
+            {/* Caminatas registradas */}
+            <div className="mt-10 bg-zinc-900/50 border border-zinc-800 rounded-[2.5rem] overflow-hidden">
+              <div className="p-5 border-b border-zinc-800 flex justify-between items-center bg-zinc-900/50">
+                <span className="text-[10px] font-black text-zinc-500 uppercase tracking-[0.2em] flex items-center gap-2">
+                  <Footprints size={14} className="text-teal-500" /> Caminatas (NEAT)
+                </span>
+                <span className="text-[10px] font-bold text-teal-500 bg-teal-500/10 px-3 py-1 rounded-lg">{walks.length}</span>
+              </div>
+              <div className="max-h-[40vh] overflow-y-auto">
+                {walks.length === 0 ? (
+                  <p className="p-8 text-center text-zinc-700 uppercase text-[10px] font-black tracking-widest italic">Sin caminatas registradas</p>
+                ) : (
+                  [...walks].reverse().map((w, revIdx) => {
+                    const idx = walks.length - 1 - revIdx;
+                    const dt = new Date(w.timestamp);
+                    return (
+                      <div key={idx} className="flex justify-between items-center p-5 border-b border-zinc-800/40 last:border-0">
+                        <div>
+                          <p className="text-[10px] font-black text-zinc-500 tracking-widest mb-1">
+                            {dt.toLocaleDateString('es-ES', { weekday: 'short', day: '2-digit', month: '2-digit' })} · {dt.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}
+                          </p>
+                          <span className="text-zinc-100 font-black text-xl">
+                            {w.minutes} <span className="text-[10px] text-zinc-600">MIN</span>
+                          </span>
+                        </div>
+                        <button onClick={() => askDeleteWalk(idx)} className="text-zinc-500 hover:text-red-500 p-3 bg-zinc-950 rounded-xl transition-colors">
+                          <Trash2 size={18} />
+                        </button>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+              {walks.length > 0 && (
+                <div className="p-4 border-t border-zinc-800">
+                  <Button3D onClick={() => exportData('walks')} color="zinc" className="w-full">
+                    <Download size={18} className="text-teal-500" />
+                    Descargar CSV NEAT
+                  </Button3D>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* TAB: SALUD */}
+        {tab === 'metrics' && (
+          <div className="p-5 space-y-6 anim-fade">
+            <h1 className="text-xl font-black uppercase tracking-widest border-b border-zinc-800 pb-4 mb-6 flex items-center gap-3">
+              <Heart className="text-emerald-500" /> Físico
+            </h1>
+
+            <div className="bg-zinc-900 border border-zinc-800 p-6 rounded-[2.5rem] shadow-xl">
+              <h3 className="text-[10px] font-black text-zinc-500 uppercase mb-6 tracking-[0.2em] flex items-center gap-2">
+                <Plus size={14} className="text-emerald-500" /> Nuevo Registro
+              </h3>
+              <div className="flex gap-3 mb-4">
+                <NumberInput value={healthInput.weight}
+                  onChange={v => setHealthInput({ ...healthInput, weight: v })}
+                  suffix="KG" placeholder="0" />
+                <NumberInput value={healthInput.waist}
+                  onChange={v => setHealthInput({ ...healthInput, waist: v })}
+                  suffix="CM" placeholder="0" />
+              </div>
+              <input type="text" placeholder="NOTA (opcional)" value={healthInput.note}
+                     onChange={e => setHealthInput({ ...healthInput, note: e.target.value })}
+                     className="w-full bg-zinc-950 border border-zinc-800 rounded-2xl p-4 text-center font-bold text-xs uppercase tracking-widest outline-none focus:border-emerald-500 transition-colors mb-6" />
+              <Button3D onClick={handleAddMetric} className="w-full" color="white">Guardar Físico</Button3D>
+            </div>
+
+            <div className="bg-zinc-900 border border-zinc-800 rounded-[2.5rem] overflow-hidden shadow-xl">
+              <div className="p-5 border-b border-zinc-800 flex justify-between items-center bg-zinc-900/50">
+                <span className="text-[10px] font-black text-zinc-500 uppercase tracking-[0.2em]">Histórico</span>
+                <span className="text-[10px] font-bold text-emerald-500 bg-emerald-500/10 px-3 py-1 rounded-lg">{health.length}</span>
+              </div>
+              <div className="max-h-[55vh] overflow-y-auto">
+                {sortedHealth.length === 0 ? (
+                  <p className="p-10 text-center text-zinc-700 uppercase text-[10px] font-black tracking-widest italic">Sin datos</p>
+                ) : (
+                  [...sortedHealth].reverse().map((m, revIdx) => {
+                    const origIdx = health.indexOf(m);
+                    return (
+                      <div key={revIdx} className="flex justify-between items-center p-6 border-b border-zinc-800/40 last:border-0 hover:bg-zinc-800/20 transition-colors">
+                        <div>
+                          <div className="flex items-center gap-2 mb-1 flex-wrap">
+                            <p className="text-[10px] font-black text-zinc-500 tracking-widest">{m.date}</p>
+                            {m.note && m.note !== '-' && (
+                              <span className="bg-zinc-800 text-zinc-400 text-[8px] px-2 py-0.5 rounded-full uppercase">{m.note}</span>
+                            )}
+                          </div>
+                          <span className="text-zinc-100 font-black text-xl mr-4">{m.weight} <span className="text-[10px] text-zinc-600">KG</span></span>
+                          <span className="text-zinc-400 font-black text-xl">{m.waist} <span className="text-[10px] text-zinc-600">CM</span></span>
+                        </div>
+                        <button onClick={() => askDeleteMetric(origIdx)} className="text-zinc-500 hover:text-red-500 p-3 bg-zinc-950 rounded-xl transition-colors">
+                          <Trash2 size={18} />
+                        </button>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </div>
+
+            {health.length > 0 && (
+              <div className="pt-4">
+                <Button3D onClick={() => exportData('health')} color="zinc" className="w-full">
+                  <Download size={18} className="text-teal-500" />
+                  Descargar CSV Salud
+                </Button3D>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* MODAL: TIMER */}
+        {timerActive && (
+          <div className="fixed inset-0 bg-black/95 backdrop-blur-3xl z-[60] flex flex-col justify-center items-center p-8 anim-fade">
+            <button onClick={() => setTimerActive(false)} className="absolute top-10 right-10 text-zinc-500 p-4 bg-zinc-900 rounded-full border border-zinc-800">
+              <X size={28} />
+            </button>
+            <Timer size={80} className="text-emerald-500 mb-10 animate-pulse drop-shadow-[0_0_30px_rgba(16,185,129,0.5)]" />
+            <h3 className="text-xs font-black text-emerald-500/80 uppercase mb-8 tracking-[0.4em]">Recuperación</h3>
+            <div className="text-[8rem] sm:text-[11rem] font-black text-white tracking-tighter tabular-nums mb-16 leading-none drop-shadow-2xl">
+              {Math.floor(timer / 60)}:{(timer % 60).toString().padStart(2, '0')}
+            </div>
+            <div className="flex w-full max-w-xs gap-5 mb-10">
+              <Button3D onClick={() => setEndsAt(prev => Math.max(Date.now(), prev - 10000))} className="flex-1" color="zinc">-10s</Button3D>
+              <Button3D onClick={() => setEndsAt(prev => prev + 10000)} className="flex-1" color="zinc">+10s</Button3D>
+            </div>
+            <Button3D onClick={() => { setTimer(0); setTimerActive(false); }} className="w-full max-w-xs text-sm" color="white">Saltar Descanso</Button3D>
+          </div>
+        )}
+
+        {/* MODAL: NEAT */}
+        {showWalkModal && (
+          <div className="fixed inset-0 bg-black/90 backdrop-blur-2xl z-[60] flex justify-center items-center p-6 anim-fade">
+            <div className="bg-zinc-900 border border-zinc-800 rounded-[3rem] w-full max-w-sm p-10 relative shadow-2xl">
+              <button onClick={() => { setShowWalkModal(false); setWalkInput(''); }} className="absolute right-6 top-6 text-zinc-500 p-3 bg-zinc-950 rounded-full">
+                <X size={20} />
+              </button>
+              <h3 className="text-[10px] font-black text-emerald-500 uppercase tracking-[0.3em] mb-8 flex items-center gap-2">
+                <Footprints size={14} /> Caminata Extra
+              </h3>
+              <div className="relative mb-8">
+                <input type="text" inputMode="numeric" pattern="[0-9]*" value={walkInput}
+                       onChange={e => setWalkInput(e.target.value.replace(/\D/g, ''))}
+                       className="w-full bg-zinc-950 border border-zinc-800 rounded-3xl p-8 text-6xl font-black text-center outline-none focus:border-emerald-500 transition-colors text-zinc-100"
+                       placeholder="0" autoFocus />
+                <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 bg-zinc-950 px-4 py-1 rounded-full border border-zinc-800 text-[9px] font-bold text-zinc-500 uppercase tracking-widest">Minutos</div>
+              </div>
+              <Button3D onClick={() => {
+                const m = parseInt(walkInput, 10);
+                if (m > 0) {
+                  persist(KEYS.WALKS, [...walks, { timestamp: Date.now(), minutes: m }], setWalks);
+                  setShowWalkModal(false);
+                  setWalkInput('');
+                  vibrate(20);
+                }
+              }} className="w-full">Guardar NEAT</Button3D>
+            </div>
+          </div>
+        )}
+
+        {/* MODAL: AYUDA PWA */}
+        {showHelpModal && (
+          <div className="fixed inset-0 bg-black/95 backdrop-blur-2xl z-[70] flex flex-col p-8 anim-slide-lg overflow-y-auto">
+            <button onClick={() => setShowHelpModal(false)} className="absolute top-8 right-8 text-zinc-500 p-2">
+              <X size={32} />
+            </button>
+            <h2 className="text-2xl font-black uppercase tracking-widest text-zinc-100 mb-10 mt-12 flex items-center gap-3">
+              <Smartphone className="text-emerald-500" /> Instalación App
+            </h2>
+            <div className="space-y-10">
+              <div className="flex gap-5">
+                <div className="w-10 h-10 rounded-full bg-emerald-500/20 text-emerald-500 flex items-center justify-center font-black flex-shrink-0 text-lg border border-emerald-500/30">1</div>
+                <div>
+                  <h3 className="font-black uppercase text-zinc-100 text-sm mb-2 tracking-widest">Subir a hosting</h3>
+                  <p className="text-zinc-400 text-xs leading-relaxed">Sube <code className="text-emerald-400">index.html</code> + <code className="text-emerald-400">sw.js</code> a Netlify Drop o similar.</p>
+                </div>
+              </div>
+              <div className="flex gap-5">
+                <div className="w-10 h-10 rounded-full bg-emerald-500/20 text-emerald-500 flex items-center justify-center font-black flex-shrink-0 text-lg border border-emerald-500/30">2</div>
+                <div>
+                  <h3 className="font-black uppercase text-zinc-100 text-sm mb-2 tracking-widest">Navegador Nativo</h3>
+                  <p className="text-zinc-400 text-xs leading-relaxed">Abre la URL en <b>Safari</b> (iOS) o <b>Chrome</b> (Android).</p>
+                </div>
+              </div>
+              <div className="flex gap-5">
+                <div className="w-10 h-10 rounded-full bg-emerald-500/20 text-emerald-500 flex items-center justify-center font-black flex-shrink-0 text-lg border border-emerald-500/30">3</div>
+                <div>
+                  <h3 className="font-black uppercase text-zinc-100 text-sm mb-2 tracking-widest">Añadir a Inicio</h3>
+                  <p className="text-zinc-400 text-xs leading-relaxed">Compartir → <b>Añadir a pantalla de inicio</b>. Funciona offline tras la primera carga.</p>
+                </div>
+              </div>
+            </div>
+            <Button3D onClick={() => setShowHelpModal(false)} className="w-full mt-auto" color="white">Entendido</Button3D>
+          </div>
+        )}
+
+        {/* MODAL: REANUDAR SESIÓN */}
+        {resumePrompt && (
+          <div className="fixed inset-0 bg-black/95 backdrop-blur-3xl z-[90] flex justify-center items-center p-6 anim-fade">
+            <div className="bg-zinc-900 border border-emerald-500/30 rounded-[2.5rem] w-full max-w-sm p-8 shadow-2xl">
+              <div className="flex items-center gap-3 mb-3">
+                <Refresh size={20} className="text-emerald-500" />
+                <h3 className="text-sm font-black uppercase tracking-widest">Sesión sin acabar</h3>
+              </div>
+              <p className="text-zinc-400 text-xs leading-relaxed mb-2">
+                Tienes una sesión de <b className="text-zinc-100">{resumePrompt.activeRoutine?.customName || resumePrompt.activeRoutine?.name}</b> abierta
+                {resumePrompt.sessionStartedAt && (
+                  <> desde hace <b className="text-emerald-500">{Math.max(1, Math.round((Date.now() - resumePrompt.sessionStartedAt) / 60000))}</b> min</>
+                )}.
+              </p>
+              <p className="text-zinc-500 text-[10px] tracking-widest uppercase mb-8">¿Reanudar o descartar?</p>
+              <div className="grid grid-cols-2 gap-3">
+                <Button3D onClick={discardSession} color="zinc">Descartar</Button3D>
+                <Button3D onClick={resumeSession} color="emerald">Reanudar</Button3D>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* MODAL: EDITAR ENTRENAMIENTO */}
+        {editingWorkout && (
+          <div className="fixed inset-0 bg-zinc-950 z-[65] overflow-y-auto anim-fade">
+            <div className="sticky top-0 bg-zinc-950/95 backdrop-blur-2xl border-b border-zinc-800 px-5 py-4 flex items-center justify-between z-10">
+              <button onClick={cancelEditWorkout} className="flex items-center gap-2 text-zinc-500 text-[10px] font-black uppercase tracking-widest p-2 -ml-2">
+                <ArrowLeft size={14} /> Cancelar
+              </button>
+              <span className="text-[10px] font-black uppercase tracking-widest text-emerald-500">Editando Sesión</span>
+              <button onClick={saveEditWorkout} className="flex items-center gap-2 text-emerald-500 text-[10px] font-black uppercase tracking-widest p-2 -mr-2">
+                <Save size={14} /> Guardar
+              </button>
+            </div>
+
+            <div className="p-5 space-y-5 pb-32">
+              <div className="bg-zinc-900 border border-zinc-800 p-5 rounded-[2rem]">
+                <p className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-1">Rutina</p>
+                <p className="text-zinc-100 font-black uppercase text-sm">{editingWorkout.data.routine}</p>
+                <p className="text-[10px] font-bold text-emerald-500 mt-1 tracking-widest">
+                  {new Date(editingWorkout.data.timestamp).toLocaleString('es-ES', { dateStyle: 'short', timeStyle: 'short' })}
+                </p>
+              </div>
+
+              {editingWorkout.data.log.length === 0 && (
+                <p className="text-zinc-700 text-center py-12 text-xs uppercase font-black tracking-widest italic border-2 border-dashed border-zinc-900 rounded-[2rem]">
+                  Sin ejercicios. Cancela para conservar.
+                </p>
+              )}
+
+              {editingWorkout.data.log.map((ex, exIdx) => (
+                <div key={exIdx} className="bg-zinc-900 border border-zinc-800 p-5 rounded-[2rem] shadow-xl">
+                  <div className="flex justify-between items-center mb-4 pb-3 border-b border-zinc-800/60">
+                    <p className="text-[11px] font-black text-zinc-200 uppercase tracking-widest flex-1 mr-2">{ex.name}</p>
+                    <button onClick={() => removeEditExercise(exIdx)} className="text-zinc-500 hover:text-red-500 p-2.5 bg-zinc-950 rounded-xl">
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
+                  <div className="space-y-3">
+                    {ex.sets.map((s, sIdx) => (
+                      <div key={sIdx} className="flex items-center gap-2">
+                        <span className="text-[9px] font-black text-zinc-600 w-10 tracking-widest">S{sIdx + 1}</span>
+                        <NumberInput integer value={s.reps}
+                          onChange={v => updateEditSet(exIdx, sIdx, 'reps', v === '' ? 0 : v)}
+                          suffix="Reps" />
+                        <NumberInput value={s.weight}
+                          onChange={v => updateEditSet(exIdx, sIdx, 'weight', v === '' ? 0 : v)}
+                          suffix="KG" />
+                        <button onClick={() => removeEditSet(exIdx, sIdx)} className="text-zinc-500 hover:text-red-500 p-2.5 bg-zinc-950 rounded-xl flex-shrink-0">
+                          <X size={16} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                  <button onClick={() => addEditSet(exIdx)} className="w-full mt-4 py-3 border-2 border-dashed border-zinc-800 hover:border-emerald-500/40 hover:text-emerald-500 text-zinc-600 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-colors">
+                    <Plus size={14} /> Añadir Serie
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* CONFIRM */}
+        {confirm && (
+          <Confirm open={true} title={confirm.title} message={confirm.message}
+                   confirmLabel={confirm.confirmLabel} confirmColor={confirm.confirmColor}
+                   onConfirm={confirm.onConfirm} onCancel={() => setConfirm(null)} />
+        )}
+
+        {/* NAV BOTTOM */}
+        <div className="fixed bottom-0 left-0 right-0 bg-zinc-950/95 backdrop-blur-2xl border-t border-zinc-900 flex justify-around items-center z-40 px-2 shadow-[0_-20px_50px_rgba(0,0,0,0.8)] nav-fixed py-2">
+          <button onClick={() => { setFlow('idle'); setTab('dashboard'); }}
+                  className={`flex flex-col items-center gap-1.5 transition-all w-16 py-2 ${tab === 'dashboard' && flow === 'idle' ? 'text-emerald-500 drop-shadow-[0_0_8px_rgba(16,185,129,0.5)] scale-110' : 'text-zinc-600 hover:text-zinc-400'}`}>
+            <Activity size={22} /><span className="text-[9px] font-black uppercase tracking-widest">Panel</span>
+          </button>
+          <button onClick={() => { setFlow('idle'); setTab('history'); }}
+                  className={`flex flex-col items-center gap-1.5 transition-all w-16 py-2 ${tab === 'history' ? 'text-emerald-500 drop-shadow-[0_0_8px_rgba(16,185,129,0.5)] scale-110' : 'text-zinc-600 hover:text-zinc-400'}`}>
+            <LayoutList size={22} /><span className="text-[9px] font-black uppercase tracking-widest">Datos</span>
+          </button>
+          <button onClick={() => { setFlow('idle'); setTab('metrics'); }}
+                  className={`flex flex-col items-center gap-1.5 transition-all w-16 py-2 ${tab === 'metrics' ? 'text-emerald-500 drop-shadow-[0_0_8px_rgba(16,185,129,0.5)] scale-110' : 'text-zinc-600 hover:text-zinc-400'}`}>
+            <Heart size={22} /><span className="text-[9px] font-black uppercase tracking-widest">Salud</span>
+          </button>
+          <button onClick={() => setShowWalkModal(true)}
+                  className="flex flex-col items-center gap-1.5 transition-all w-16 py-2 text-zinc-600 hover:text-zinc-400">
+            <Footprints size={22} /><span className="text-[9px] font-black uppercase tracking-widest">NEAT</span>
+          </button>
+        </div>
+      </div>
+    );
+  };
+
+  ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>
