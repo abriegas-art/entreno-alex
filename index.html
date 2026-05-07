@@ -16,6 +16,7 @@
   <script src="https://cdn.tailwindcss.com?plugins=forms"></script>
   <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
   <style>
@@ -40,7 +41,7 @@
   <div id="root"></div>
 
   <script type="text/babel" data-presets="react">
-  const { useState, useEffect, useRef } = React;
+  const { useState, useEffect, useRef, useMemo } = React;
 
   /* ============================================================
      ICONOS (Lucide inline)
@@ -181,14 +182,15 @@
      ============================================================ */
   const ts = (iso) => new Date(iso).getTime();
   const SEED_HEALTH = [
-    { date: '27/04', weight: 98.7, waist: 98.0, note: 'Inicio de fase',  timestamp: ts('2026-04-27T08:00:00') },
-    { date: '28/04', weight: 98.9, waist: 97.0, note: '-',                timestamp: ts('2026-04-28T08:00:00') },
-    { date: '01/05', weight: 98.5, waist: 96.5, note: 'Mínimo previo',   timestamp: ts('2026-05-01T08:00:00') },
-    { date: '02/05', weight: 99.5, waist: 96.5, note: 'Post-hamburguesa',timestamp: ts('2026-05-02T08:00:00') },
-    { date: '03/05', weight: 98.8, waist: 98.0, note: 'Post-desayuno',   timestamp: ts('2026-05-03T08:00:00') },
-    { date: '04/05', weight: 97.8, waist: 96.0, note: 'Mínimo histórico',timestamp: ts('2026-05-04T08:00:00') },
-    { date: '05/05', weight: 97.8, waist: 96.0, note: '-',                timestamp: ts('2026-05-05T08:00:00') },
-    { date: '06/05', weight: 97.8, waist: 95.5, note: '¡Nuevo mínimo!',  timestamp: ts('2026-05-06T08:00:00') }
+    { date: '27/04', weight: 98.7, waist: 98.0, note: 'Inicio de fase',           timestamp: ts('2026-04-27T08:00:00') },
+    { date: '28/04', weight: 98.9, waist: 97.0, note: '-',                         timestamp: ts('2026-04-28T08:00:00') },
+    { date: '01/05', weight: 98.5, waist: 96.5, note: 'Mínimo previo',            timestamp: ts('2026-05-01T08:00:00') },
+    { date: '02/05', weight: 99.5, waist: 96.5, note: 'Post-hamburguesa',         timestamp: ts('2026-05-02T08:00:00') },
+    { date: '03/05', weight: 98.8, waist: 98.0, note: 'Post-desayuno',            timestamp: ts('2026-05-03T08:00:00') },
+    { date: '04/05', weight: 97.8, waist: 96.0, note: 'Mínimo histórico',         timestamp: ts('2026-05-04T08:00:00') },
+    { date: '05/05', weight: 97.8, waist: 96.0, note: 'Actual',                   timestamp: ts('2026-05-05T08:00:00') },
+    { date: '06/05', weight: 97.8, waist: 95.5, note: '¡Nuevo mínimo histórico!', timestamp: ts('2026-05-06T08:00:00') },
+    { date: '07/05', weight: 97.3, waist: 94.0, note: '¡Riesgo Salud Zero!',      timestamp: ts('2026-05-07T08:00:00') }
   ];
 
   const SEED_WORKOUTS = [
@@ -242,8 +244,26 @@
         { id: 'sq',    name: 'Sentadilla Frontal', sets: [{reps:8,weight:50},{reps:8,weight:50},{reps:8,weight:50},{reps:8,weight:50}], vol: 1600 },
         { id: 'row',   name: 'Remo Barra',         sets: [{reps:6,weight:60},{reps:6,weight:60},{reps:6,weight:60},{reps:6,weight:60}], vol: 1440 }
       ]
+    },
+    {
+      id: 'seed-6', timestamp: ts('2026-05-06T18:00:00'),
+      routine: 'Día B: Empuje + Tracc. Vertical',
+      log: [
+        { id: 'mil',  name: 'Press Militar',     sets: [{reps:5,weight:50},{reps:5,weight:50},{reps:5,weight:50},{reps:5,weight:50}], vol: 1000 },
+        { id: 'rdl',  name: 'Peso Muerto RDL',   sets: [{reps:6,weight:100},{reps:6,weight:100},{reps:6,weight:100},{reps:6,weight:100}], vol: 2400 },
+        { id: 'lun',  name: 'Zancada Invertida', sets: [{reps:9,weight:18},{reps:9,weight:18},{reps:9,weight:18}], vol: 486 },
+        { id: 'dip',  name: 'Fondos Paralelas',  sets: [{reps:8,weight:0},{reps:8,weight:0},{reps:8,weight:0},{reps:8,weight:0}], vol: 0 },
+        { id: 'lat',  name: 'Elev. Laterales',   sets: [{reps:10,weight:10},{reps:10,weight:10},{reps:10,weight:10}], vol: 300 },
+        { id: 'fre',  name: 'Press Francés',     sets: [{reps:6,weight:10},{reps:6,weight:10},{reps:6,weight:10}], vol: 180 },
+        { id: 'bird', name: 'Pájaros',           sets: [{reps:10,weight:8},{reps:10,weight:8},{reps:10,weight:8}], vol: 240 }
+      ]
     }
   ];
+
+  /* Versión del seed: incrementa al añadir entradas nuevas. La migración inyecta
+     en localStorage solo las que faltan, sin tocar lo que el usuario haya añadido. */
+  const SEED_VERSION = 2;
+  const SEED_VERSION_KEY = 'alex_seed_version';
 
   /* ============================================================
      RUTINAS
@@ -383,6 +403,148 @@
   );
 
   /* ============================================================
+     GRÁFICAS (Chart.js wrapped)
+     ============================================================ */
+  const PhysicalChart = ({ entries }) => {
+    const ref = useRef(null);
+    useEffect(() => {
+      if (!ref.current || typeof Chart === 'undefined' || entries.length === 0) return;
+      const labels  = entries.map(h => h.date);
+      const peso    = entries.map(h => h.weight);
+      const cintura = entries.map(h => h.waist);
+      const minP = Math.min(...peso),    maxP = Math.max(...peso);
+      const minC = Math.min(...cintura), maxC = Math.max(...cintura);
+      const lastIdx = peso.length - 1;
+      const radius     = peso.map((_, i) => i === lastIdx ? 7 : 4);
+      const hoverRad   = peso.map((_, i) => i === lastIdx ? 9 : 6);
+      const ptColorP   = peso.map((_, i) => i === lastIdx ? '#fbbf24' : '#3b82f6');
+      const ptColorC   = peso.map((_, i) => i === lastIdx ? '#fbbf24' : '#10b981');
+      const ptBorderW  = peso.map((_, i) => i === lastIdx ? 3 : 1);
+
+      const inst = new Chart(ref.current, {
+        type: 'line',
+        data: {
+          labels,
+          datasets: [
+            { label: 'Peso',    data: peso,    yAxisID: 'y',
+              borderColor: '#3b82f6', backgroundColor: 'rgba(59,130,246,0.12)',
+              pointBackgroundColor: ptColorP, pointBorderColor: ptColorP, pointBorderWidth: ptBorderW,
+              pointRadius: radius, pointHoverRadius: hoverRad,
+              tension: 0.3, borderWidth: 3, fill: true },
+            { label: 'Cintura', data: cintura, yAxisID: 'y1',
+              borderColor: '#10b981', backgroundColor: 'rgba(16,185,129,0.10)',
+              pointBackgroundColor: ptColorC, pointBorderColor: ptColorC, pointBorderWidth: ptBorderW,
+              pointRadius: radius, pointHoverRadius: hoverRad,
+              tension: 0.3, borderWidth: 3, fill: false }
+          ]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          interaction: { mode: 'index', intersect: false },
+          plugins: {
+            legend: { position: 'top',
+              labels: { usePointStyle: true, boxWidth: 10, padding: 12,
+                font: { size: 12, weight: '600' }, color: '#e4e4e7' } },
+            tooltip: {
+              backgroundColor: '#18181b', borderColor: '#27272a', borderWidth: 1,
+              titleColor: '#fbbf24', titleFont: { size: 12, weight: 'bold' },
+              bodyColor: '#e4e4e7', bodyFont: { size: 12, weight: '600' },
+              padding: 10,
+              callbacks: {
+                label: (ctx) => `${ctx.dataset.label}: ${ctx.parsed.y} ${ctx.datasetIndex === 0 ? 'kg' : 'cm'}`
+              }
+            }
+          },
+          scales: {
+            x:  { grid: { color: 'rgba(39,39,42,0.5)' },
+                  ticks: { font: { size: 11, weight: 'bold' }, color: '#a1a1aa',
+                           maxRotation: 0, autoSkip: true, maxTicksLimit: 6 } },
+            y:  { type: 'linear', position: 'left',
+                  grid: { color: 'rgba(39,39,42,0.5)' },
+                  ticks: { font: { size: 11, weight: 'bold' }, color: '#60a5fa',
+                           callback: v => v + 'kg' },
+                  suggestedMin: Math.floor(minP - 1), suggestedMax: Math.ceil(maxP + 1) },
+            y1: { type: 'linear', position: 'right',
+                  grid: { drawOnChartArea: false },
+                  ticks: { font: { size: 11, weight: 'bold' }, color: '#34d399',
+                           callback: v => v + 'cm' },
+                  suggestedMin: Math.floor(minC - 1), suggestedMax: Math.ceil(maxC + 1) }
+          }
+        }
+      });
+      return () => inst.destroy();
+    }, [entries]);
+
+    if (entries.length === 0) {
+      return <p className="text-zinc-700 text-center py-12 text-[10px] uppercase font-black tracking-widest italic">Sin pesajes registrados</p>;
+    }
+    return <div className="relative h-72 w-full"><canvas ref={ref} /></div>;
+  };
+
+  const StrengthChart = ({ lifts, targets }) => {
+    const ref = useRef(null);
+    useEffect(() => {
+      if (!ref.current || typeof Chart === 'undefined') return;
+      const labels = ['Banca', 'RDL', 'Frontal', 'Militar'];
+      const ids = ['bench', 'rdl', 'sq', 'mil'];
+      const current   = ids.map(i => lifts[i] || 0);
+      const remaining = ids.map(i => Math.max(0, (targets[i] || 0) - (lifts[i] || 0)));
+      const reachedColors = ids.map(i => (lifts[i] || 0) >= (targets[i] || 0) ? '#fbbf24' : '#10b981');
+
+      const inst = new Chart(ref.current, {
+        type: 'bar',
+        data: {
+          labels,
+          datasets: [
+            { label: 'Actual', data: current,
+              backgroundColor: reachedColors,
+              borderRadius: 8, borderSkipped: false, barPercentage: 0.75 },
+            { label: 'Falta',  data: remaining,
+              backgroundColor: '#3f3f46',
+              borderRadius: 8, borderSkipped: false, barPercentage: 0.75 }
+          ]
+        },
+        options: {
+          indexAxis: 'y',
+          responsive: true, maintainAspectRatio: false,
+          plugins: {
+            legend: { position: 'top',
+              labels: { usePointStyle: true, boxWidth: 10, padding: 12,
+                font: { size: 12, weight: '600' }, color: '#e4e4e7' } },
+            tooltip: {
+              backgroundColor: '#18181b', borderColor: '#27272a', borderWidth: 1,
+              titleColor: '#10b981', titleFont: { size: 12, weight: 'bold' },
+              bodyColor: '#e4e4e7', bodyFont: { size: 12, weight: '600' },
+              padding: 10,
+              callbacks: {
+                label: (ctx) => `${ctx.dataset.label}: ${ctx.parsed.x} kg`,
+                footer: (items) => {
+                  if (!items[0]) return '';
+                  const id = ids[items[0].dataIndex];
+                  const cur = lifts[id] || 0; const tgt = targets[id] || 0;
+                  const pct = tgt > 0 ? Math.round((cur / tgt) * 100) : 0;
+                  return `Meta: ${tgt} kg · ${pct}%`;
+                }
+              }
+            }
+          },
+          scales: {
+            x: { stacked: true, beginAtZero: true,
+                 grid: { color: 'rgba(39,39,42,0.5)' },
+                 ticks: { font: { size: 11, weight: 'bold' }, color: '#a1a1aa',
+                          callback: v => v + 'kg' } },
+            y: { stacked: true,
+                 grid: { display: false },
+                 ticks: { font: { size: 13, weight: 'bold' }, color: '#e4e4e7' } }
+          }
+        }
+      });
+      return () => inst.destroy();
+    }, [lifts, targets]);
+    return <div className="relative h-64 w-full"><canvas ref={ref} /></div>;
+  };
+
+  /* ============================================================
      APP
      ============================================================ */
   const App = () => {
@@ -428,9 +590,10 @@
       const lw = storage.load(KEYS.WORKOUTS, null);
       const lk = storage.load(KEYS.WALKS, null);
       const lh = storage.load(KEYS.HEALTH, null);
+      const sv = storage.load(SEED_VERSION_KEY, 0);
 
-      let w = (lw && lw.length > 0) ? lw : SEED_WORKOUTS;
-      let h = (lh && lh.length > 0) ? lh : SEED_HEALTH;
+      let w = (lw && lw.length > 0) ? lw.slice() : SEED_WORKOUTS.slice();
+      let h = (lh && lh.length > 0) ? lh.slice() : SEED_HEALTH.slice();
       const k = lk || [];
 
       // Retrofit de id en entrenos antiguos sin id
@@ -449,6 +612,29 @@
       if (!lw || lw.length === 0 || migratedW) storage.save(KEYS.WORKOUTS, w);
       if (!lh || lh.length === 0 || migratedH) storage.save(KEYS.HEALTH, h);
       if (!lk) storage.save(KEYS.WALKS, k);
+
+      // Inyección incremental de seed (solo entradas que faltan, una vez por bump de SEED_VERSION).
+      if (sv < SEED_VERSION) {
+        let injectedW = false;
+        const wIds = new Set(w.map(x => x.id));
+        SEED_WORKOUTS.forEach(s => {
+          if (!wIds.has(s.id)) { w.push(s); injectedW = true; }
+        });
+        if (injectedW) {
+          w.sort((a, b) => a.timestamp - b.timestamp);
+          storage.save(KEYS.WORKOUTS, w);
+        }
+        let injectedH = false;
+        const hDates = new Set(h.map(x => x.date));
+        SEED_HEALTH.forEach(s => {
+          if (!hDates.has(s.date)) { h.push(s); injectedH = true; }
+        });
+        if (injectedH) {
+          h.sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
+          storage.save(KEYS.HEALTH, h);
+        }
+        storage.save(SEED_VERSION_KEY, SEED_VERSION);
+      }
 
       setWorkouts(w);
       setHealth(h);
@@ -684,7 +870,10 @@
     };
 
     /* --- Cálculos derivados --- */
-    const sortedHealth = [...health].sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
+    const sortedHealth = useMemo(
+      () => [...health].sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0)),
+      [health]
+    );
     const lastHealth = sortedHealth.length > 0 ? sortedHealth[sortedHealth.length - 1] : null;
     const currentWeight = lastHealth ? lastHealth.weight : 0;
     const currentWaist  = lastHealth ? lastHealth.waist  : 0;
@@ -704,6 +893,22 @@
       }));
       return best;
     };
+
+    const lifts = useMemo(() => ({
+      bench: get1RM('bench'),
+      rdl:   get1RM('rdl'),
+      sq:    get1RM('sq'),
+      mil:   get1RM('mil')
+    }), [workouts]);
+    const targets = useMemo(() => {
+      const bw = currentWeight || 95;
+      return {
+        bench: Math.round(bw),
+        rdl:   Math.round(bw * 1.8),
+        sq:    Math.round(bw * 1.5),
+        mil:   Math.round(bw * 0.75)
+      };
+    }, [currentWeight]);
 
     const getDaysTrained = (days) => {
       const limit = Date.now() - days * 86400000;
@@ -1092,43 +1297,38 @@
               {renderActivityLine()}
             </section>
 
-            <section className="bg-zinc-900/60 border border-zinc-800 p-6 rounded-[2rem] shadow-xl">
-              <h3 className="text-[10px] font-black uppercase text-zinc-500 tracking-widest mb-6 flex items-center gap-2">
-                <Award size={14} className="text-emerald-500" /> Fuerza Máxima (1RM)
+            <section className="bg-zinc-900/60 border border-zinc-800 p-5 rounded-[2rem] shadow-xl">
+              <h3 className="text-[10px] font-black uppercase text-zinc-500 tracking-widest mb-4 flex items-center gap-2">
+                <Activity size={14} className="text-emerald-500" /> Evolución Física
               </h3>
-              <KPIBar label="Press Banca"   current={get1RM('bench')} target={Math.round((currentWeight || 95) * 1)}    />
-              <KPIBar label="RDL"           current={get1RM('rdl')}   target={Math.round((currentWeight || 95) * 1.8)} />
-              <KPIBar label="Press Militar" current={get1RM('mil')}   target={Math.round((currentWeight || 95) * 0.75)}/>
-              <KPIBar label="Sentadilla"    current={get1RM('sq')}    target={Math.round((currentWeight || 95) * 1.5)} />
+              <PhysicalChart entries={sortedHealth} />
+              {lastHealth && (
+                <div className="flex items-center justify-center gap-3 mt-4 pt-4 border-t border-zinc-800/40">
+                  <span className="text-[9px] font-bold text-zinc-600 uppercase tracking-widest">Último:</span>
+                  <span className="text-base font-black text-blue-400">{currentWeight}<span className="text-[10px] text-zinc-600 ml-0.5">KG</span></span>
+                  <span className="text-zinc-700">·</span>
+                  <span className="text-base font-black text-emerald-400">{currentWaist}<span className="text-[10px] text-zinc-600 ml-0.5">CM</span></span>
+                  {currentWaist > 0 && currentWaist < 94 && (
+                    <span className="text-[9px] font-black text-amber-400 ml-1 px-1.5 py-0.5 rounded bg-amber-500/10 border border-amber-500/30 tracking-widest">SALUD ✓</span>
+                  )}
+                </div>
+              )}
             </section>
 
-            <section className="grid grid-cols-1 gap-4">
-              <div className="bg-zinc-900/60 border border-zinc-800 p-6 rounded-[2rem] flex justify-between items-center relative overflow-hidden">
-                <div className="absolute right-0 top-0 w-24 h-full bg-emerald-500/5 -skew-x-12 translate-x-12" />
-                <div>
-                  <p className="text-[10px] font-black text-zinc-500 uppercase flex items-center gap-2 tracking-widest">
-                    <Scale size={14} className="text-emerald-500" /> Peso
+            <section className="bg-zinc-900/60 border border-zinc-800 p-5 rounded-[2rem] shadow-xl">
+              <h3 className="text-[10px] font-black uppercase text-zinc-500 tracking-widest mb-4 flex items-center gap-2">
+                <Award size={14} className="text-emerald-500" /> Fuerza vs Meta
+              </h3>
+              <StrengthChart lifts={lifts} targets={targets} />
+              {(() => {
+                const reached = ['bench','rdl','sq','mil'].filter(i => (lifts[i] || 0) >= (targets[i] || 0)).length;
+                return (
+                  <p className="text-[9px] font-bold text-zinc-600 uppercase tracking-widest text-center mt-4 pt-4 border-t border-zinc-800/40">
+                    <span className={reached > 0 ? 'text-emerald-400 font-black' : 'text-zinc-500'}>{reached}</span>
+                    <span className="text-zinc-600"> / 4 EN META · BW {Math.round(currentWeight || 95)} KG</span>
                   </p>
-                  <p className="text-4xl font-black mt-1">{currentWeight > 0 ? currentWeight : '--'} <span className="text-sm font-bold text-zinc-600">KG</span></p>
-                </div>
-                <div className="text-right z-10">
-                  <p className="text-[9px] font-black text-zinc-600 uppercase tracking-widest">Meta</p>
-                  <p className="text-xl font-black text-emerald-500">95.0</p>
-                </div>
-              </div>
-              <div className="bg-zinc-900/60 border border-zinc-800 p-6 rounded-[2rem] flex justify-between items-center relative overflow-hidden">
-                <div className="absolute right-0 top-0 w-24 h-full bg-teal-500/5 -skew-x-12 translate-x-12" />
-                <div>
-                  <p className="text-[10px] font-black text-zinc-500 uppercase flex items-center gap-2 tracking-widest">
-                    <Ruler size={14} className="text-teal-500" /> Cintura
-                  </p>
-                  <p className="text-4xl font-black mt-1">{currentWaist > 0 ? currentWaist : '--'} <span className="text-sm font-bold text-zinc-600">CM</span></p>
-                </div>
-                <div className="text-right z-10">
-                  <p className="text-[9px] font-black text-zinc-600 uppercase tracking-widest">Meta Salud</p>
-                  <p className={`text-xl font-black ${currentWaist > 0 && currentWaist < 94 ? 'text-emerald-500' : 'text-zinc-500'}`}>{'< 94'}</p>
-                </div>
-              </div>
+                );
+              })()}
             </section>
 
             <section className="pt-2">
@@ -1852,7 +2052,7 @@
         )}
 
         {/* NAV BOTTOM */}
-        <div className="fixed bottom-0 left-0 right-0 bg-zinc-950/95 backdrop-blur-2xl border-t border-zinc-900 grid grid-cols-5 items-center z-40 px-1 shadow-[0_-20px_50px_rgba(0,0,0,0.8)] nav-fixed py-2">
+        <div className="fixed bottom-0 left-0 right-0 bg-zinc-900/85 backdrop-blur-2xl border-t border-zinc-800 grid grid-cols-5 items-center z-40 px-1 shadow-[0_-2px_24px_rgba(0,0,0,0.5)] nav-fixed py-2">
           <button onClick={() => { setFlow('idle'); setTab('dashboard'); }}
                   className={`flex flex-col items-center gap-1.5 transition-all py-2 ${tab === 'dashboard' && flow === 'idle' ? 'text-emerald-500 drop-shadow-[0_0_8px_rgba(16,185,129,0.5)] scale-110' : 'text-zinc-600 hover:text-zinc-400'}`}>
             <Activity size={22} /><span className="text-[9px] font-black uppercase tracking-widest">Panel</span>

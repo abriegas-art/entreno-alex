@@ -2,7 +2,7 @@
    Estrategia cache-first para HTML y assets CDN.
    Permite usar la app sin cobertura (sótano del gym, etc.).
 */
-const VERSION = 'entreno-alex-v6';
+const VERSION = 'entreno-alex-v10';
 const CORE = [
   './',
   './index.html',
@@ -10,6 +10,7 @@ const CORE = [
   'https://cdn.tailwindcss.com?plugins=forms',
   'https://unpkg.com/react@18/umd/react.production.min.js',
   'https://unpkg.com/react-dom@18/umd/react-dom.production.min.js',
+  'https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.js',
   'https://unpkg.com/@babel/standalone/babel.min.js'
 ];
 
