@@ -66,6 +66,7 @@
   const Save         = (p) => <Svg {...p}><path d="M15.2 3a2 2 0 0 1 1.4.6l3.8 3.8a2 2 0 0 1 .6 1.4V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h10.2z" /><path d="M17 21v-7a1 1 0 0 0-1-1H8a1 1 0 0 0-1 1v7" /><path d="M7 3v4a1 1 0 0 0 1 1h7" /></Svg>;
   const CheckCircle  = (p) => <Svg {...p}><path d="M21.801 10A10 10 0 1 1 17 3.335" /><path d="m9 11 3 3L22 4" /></Svg>;
   const ChevronRight = (p) => <Svg {...p}><path d="m9 18 6-6-6-6" /></Svg>;
+  const ChevronLeft  = (p) => <Svg {...p}><path d="m15 18-6-6 6-6" /></Svg>;
   const Anchor       = (p) => <Svg {...p}><path d="M12 22V8" /><path d="M5 12H2a10 10 0 0 0 20 0h-3" /><circle cx="12" cy="5" r="3" /></Svg>;
   const Timer        = (p) => <Svg {...p}><line x1="10" x2="14" y1="2" y2="2" /><line x1="12" x2="15" y1="14" y2="11" /><circle cx="12" cy="14" r="8" /></Svg>;
   const Download     = (p) => <Svg {...p}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" x2="12" y1="15" y2="3" /></Svg>;
@@ -109,13 +110,17 @@
      ============================================================ */
   const uid = () => `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 9)}`;
 
-  /* Acepta "97,8" o "97.8" → 97.8. Vacío permanece vacío. */
+  /* Sanitiza pero NO convierte a número (evita perder el "." mientras tecleas).
+     Acepta coma o punto, un solo separador, dígitos y un signo menos al inicio.
+     Devuelve siempre string. Los consumidores hacen Number(value) al guardar. */
   const parseNum = (v) => {
     if (v === '' || v == null) return '';
-    const s = String(v).replace(',', '.').trim();
-    if (s === '' || s === '-' || s === '.') return s;
-    const n = Number(s);
-    return isNaN(n) ? '' : n;
+    let s = String(v).replace(',', '.');
+    s = s.replace(/[^0-9.\-]/g, '');
+    const firstDot = s.indexOf('.');
+    if (firstDot !== -1) s = s.slice(0, firstDot + 1) + s.slice(firstDot + 1).replace(/\./g, '');
+    s = (s.startsWith('-') ? '-' : '') + s.replace(/-/g, '');
+    return s;
   };
 
   /* CSV: escapa comillas dobles y envuelve si lleva separadores. */
@@ -410,6 +415,11 @@
     const [kbTime, setKbTime] = useState('');
     const [kbRounds, setKbRounds] = useState('');
 
+    const [calMonth, setCalMonth] = useState(() => {
+      const d = new Date(); return new Date(d.getFullYear(), d.getMonth(), 1);
+    });
+    const [calSelectedDay, setCalSelectedDay] = useState(null);
+
     const wakeLockRef = useRef(null);
     const sessionLoadedRef = useRef(false);
 
@@ -544,9 +554,9 @@
     };
 
     const handleAddMetric = () => {
-      const w = parseNum(healthInput.weight);
-      const c = parseNum(healthInput.waist);
-      if (typeof w !== 'number' || typeof c !== 'number' || w <= 0 || c <= 0) return;
+      const w = Number(healthInput.weight);
+      const c = Number(healthInput.waist);
+      if (!w || !c || isNaN(w) || isNaN(c) || w <= 0 || c <= 0) return;
       const entry = {
         date: new Date().toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit' }),
         weight: w,
@@ -1002,6 +1012,49 @@
       return { exCount, totalVol, totalSets };
     };
 
+    /* --- Calendario --- */
+    const sameDay = (a, b) => a.toDateString() === b.toDateString();
+    const dayActivities = (date) => ({
+      workouts: workouts.filter(x => sameDay(new Date(x.timestamp), date)),
+      walks:    walks.filter(x => sameDay(new Date(x.timestamp), date)),
+      health:   health.filter(x => x.timestamp && sameDay(new Date(x.timestamp), date))
+    });
+    const getMonthGrid = (firstOfMonth) => {
+      const year = firstOfMonth.getFullYear();
+      const month = firstOfMonth.getMonth();
+      const firstDayOfWeek = (firstOfMonth.getDay() + 6) % 7; // L=0 ... D=6
+      const grid = [];
+      const lastOfPrev = new Date(year, month, 0).getDate();
+      for (let i = firstDayOfWeek - 1; i >= 0; i--) {
+        grid.push({ d: new Date(year, month - 1, lastOfPrev - i), inMonth: false });
+      }
+      const lastOfMonth = new Date(year, month + 1, 0).getDate();
+      for (let i = 1; i <= lastOfMonth; i++) {
+        grid.push({ d: new Date(year, month, i), inMonth: true });
+      }
+      while (grid.length % 7 !== 0) {
+        const last = grid[grid.length - 1].d;
+        const next = new Date(last.getTime()); next.setDate(next.getDate() + 1);
+        grid.push({ d: next, inMonth: false });
+      }
+      return grid;
+    };
+    const monthLabel = (d) => d.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' })
+      .replace(/^./, c => c.toUpperCase());
+    const goPrevMonth = () => {
+      setCalSelectedDay(null);
+      setCalMonth(m => new Date(m.getFullYear(), m.getMonth() - 1, 1));
+    };
+    const goNextMonth = () => {
+      setCalSelectedDay(null);
+      setCalMonth(m => new Date(m.getFullYear(), m.getMonth() + 1, 1));
+    };
+    const goToday = () => {
+      const d = new Date();
+      setCalMonth(new Date(d.getFullYear(), d.getMonth(), 1));
+      setCalSelectedDay(d);
+    };
+
     const totalKgSession = sessionLog.reduce((a, b) => a + (b.vol || 0), 0);
     const lastSessionInfo = activeRoutine ? getLastSessionValues(activeRoutine.name) : null;
 
@@ -1414,6 +1467,145 @@
           </div>
         )}
 
+        {/* TAB: CALENDARIO */}
+        {tab === 'calendar' && (
+          <div className="p-5 space-y-5 anim-fade">
+            <div className="flex items-center justify-between border-b border-zinc-800 pb-4">
+              <button onClick={goPrevMonth} className="text-zinc-400 hover:text-emerald-500 p-2.5 bg-zinc-900 rounded-xl border border-zinc-800 transition-colors">
+                <ChevronLeft size={20} />
+              </button>
+              <button onClick={goToday} className="flex flex-col items-center px-2 py-1 rounded-xl active:bg-zinc-800/30">
+                <h1 className="text-base font-black uppercase tracking-widest">{monthLabel(calMonth)}</h1>
+                <span className="text-[9px] font-bold text-emerald-500/70 tracking-widest mt-0.5">PULSA PARA HOY</span>
+              </button>
+              <button onClick={goNextMonth} className="text-zinc-400 hover:text-emerald-500 p-2.5 bg-zinc-900 rounded-xl border border-zinc-800 transition-colors">
+                <ChevronRight size={20} />
+              </button>
+            </div>
+
+            <div className="grid grid-cols-7 gap-1.5">
+              {['L','M','X','J','V','S','D'].map(d => (
+                <div key={d} className="text-center text-[10px] font-black text-zinc-600 uppercase tracking-widest py-1">{d}</div>
+              ))}
+              {getMonthGrid(calMonth).map(({ d, inMonth }, i) => {
+                const a = dayActivities(d);
+                const hasW = a.workouts.length > 0;
+                const hasK = a.walks.length > 0;
+                const hasH = a.health.length > 0;
+                const isToday = sameDay(d, new Date());
+                const isSelected = calSelectedDay && sameDay(d, calSelectedDay);
+                let bg = 'bg-zinc-900/40';
+                if (hasW && hasK) bg = 'bg-emerald-500/40';
+                else if (hasW) bg = 'bg-emerald-500/25';
+                else if (hasK) bg = 'bg-teal-500/20';
+                else if (hasH) bg = 'bg-amber-500/10';
+                return (
+                  <button
+                    key={i}
+                    onClick={() => setCalSelectedDay(d)}
+                    className={`aspect-square rounded-xl flex flex-col items-center justify-between p-1.5 transition-all
+                      ${bg}
+                      ${isSelected ? 'ring-2 ring-emerald-400 scale-105' : isToday ? 'ring-1 ring-emerald-500/60' : 'border border-zinc-800/50'}
+                      ${!inMonth ? 'opacity-30' : ''}
+                    `}
+                  >
+                    <span className={`text-sm font-black ${inMonth ? (isToday ? 'text-emerald-400' : 'text-zinc-100') : 'text-zinc-600'}`}>
+                      {d.getDate()}
+                    </span>
+                    <div className="flex gap-0.5 h-1.5">
+                      {hasW && <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />}
+                      {hasK && <span className="w-1.5 h-1.5 rounded-full bg-teal-400" />}
+                      {hasH && <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="flex items-center gap-4 text-[9px] font-bold text-zinc-500 uppercase tracking-widest justify-center pt-1 flex-wrap">
+              <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-emerald-400 inline-block" />Entreno</span>
+              <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-teal-400 inline-block" />NEAT</span>
+              <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-amber-400 inline-block" />Pesaje</span>
+            </div>
+
+            {calSelectedDay && (() => {
+              const a = dayActivities(calSelectedDay);
+              const empty = a.workouts.length + a.walks.length + a.health.length === 0;
+              return (
+                <div className="bg-zinc-900 border border-zinc-800 rounded-[2rem] shadow-xl anim-fade">
+                  <div className="flex justify-between items-center p-5 border-b border-zinc-800/60">
+                    <div>
+                      <p className="text-[10px] font-black text-emerald-500 uppercase tracking-[0.2em]">
+                        {calSelectedDay.toLocaleDateString('es-ES', { weekday: 'long', day: '2-digit', month: 'long' })}
+                      </p>
+                      {!empty && (
+                        <p className="text-[9px] font-bold text-zinc-500 tracking-widest mt-1">
+                          {a.workouts.length > 0 && `${a.workouts.length} ENTRENO${a.workouts.length > 1 ? 'S' : ''}`}
+                          {a.walks.length > 0 && ` · ${a.walks.length} NEAT`}
+                          {a.health.length > 0 && ` · ${a.health.length} PESAJE${a.health.length > 1 ? 'S' : ''}`}
+                        </p>
+                      )}
+                    </div>
+                    <button onClick={() => setCalSelectedDay(null)} className="text-zinc-500 p-2 bg-zinc-950 rounded-xl">
+                      <X size={16} />
+                    </button>
+                  </div>
+
+                  {empty ? (
+                    <p className="p-8 text-center text-zinc-700 uppercase text-[10px] font-black tracking-widest italic">Sin actividad</p>
+                  ) : (
+                    <div className="p-5 space-y-4">
+                      {a.workouts.map((w, i) => {
+                        const sum = summarizeWorkout(w);
+                        return (
+                          <div key={'w'+i} className="bg-zinc-950/50 border border-emerald-500/20 rounded-2xl p-4">
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="w-2 h-2 rounded-full bg-emerald-400" />
+                              <p className="text-[10px] font-black text-emerald-500 uppercase tracking-widest">Entreno</p>
+                              <span className="text-[10px] font-bold text-zinc-500 tracking-widest ml-auto">
+                                {new Date(w.timestamp).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}
+                              </span>
+                            </div>
+                            <p className="text-sm font-black text-zinc-100 uppercase mb-1">{w.routine}</p>
+                            <p className="text-[10px] font-bold text-zinc-500 tracking-widest">
+                              {sum.exCount} EJ · {sum.totalSets} SERIES · {sum.totalVol} KG
+                            </p>
+                          </div>
+                        );
+                      })}
+                      {a.walks.map((k, i) => (
+                        <div key={'k'+i} className="bg-zinc-950/50 border border-teal-500/20 rounded-2xl p-4 flex items-center gap-3">
+                          <span className="w-2 h-2 rounded-full bg-teal-400" />
+                          <Footprints size={14} className="text-teal-500" />
+                          <p className="text-[10px] font-black text-teal-400 uppercase tracking-widest">NEAT</p>
+                          <span className="ml-auto text-zinc-100 font-black">
+                            {k.minutes} <span className="text-[10px] text-zinc-600 font-bold">MIN</span>
+                          </span>
+                          <span className="text-[10px] font-bold text-zinc-500 tracking-widest">
+                            {new Date(k.timestamp).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                        </div>
+                      ))}
+                      {a.health.map((h, i) => (
+                        <div key={'h'+i} className="bg-zinc-950/50 border border-amber-500/20 rounded-2xl p-4 flex items-center gap-3 flex-wrap">
+                          <span className="w-2 h-2 rounded-full bg-amber-400" />
+                          <Scale size={14} className="text-amber-500" />
+                          <p className="text-[10px] font-black text-amber-400 uppercase tracking-widest">Pesaje</p>
+                          <span className="ml-auto text-zinc-100 font-black">{h.weight} <span className="text-[10px] text-zinc-600 font-bold">KG</span></span>
+                          <span className="text-zinc-300 font-black">{h.waist} <span className="text-[10px] text-zinc-600 font-bold">CM</span></span>
+                          {h.note && h.note !== '-' && (
+                            <span className="text-[9px] text-zinc-500 font-bold uppercase tracking-widest w-full mt-1">{h.note}</span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+          </div>
+        )}
+
         {/* TAB: SALUD */}
         {tab === 'metrics' && (
           <div className="p-5 space-y-6 anim-fade">
@@ -1660,21 +1852,25 @@
         )}
 
         {/* NAV BOTTOM */}
-        <div className="fixed bottom-0 left-0 right-0 bg-zinc-950/95 backdrop-blur-2xl border-t border-zinc-900 flex justify-around items-center z-40 px-2 shadow-[0_-20px_50px_rgba(0,0,0,0.8)] nav-fixed py-2">
+        <div className="fixed bottom-0 left-0 right-0 bg-zinc-950/95 backdrop-blur-2xl border-t border-zinc-900 grid grid-cols-5 items-center z-40 px-1 shadow-[0_-20px_50px_rgba(0,0,0,0.8)] nav-fixed py-2">
           <button onClick={() => { setFlow('idle'); setTab('dashboard'); }}
-                  className={`flex flex-col items-center gap-1.5 transition-all w-16 py-2 ${tab === 'dashboard' && flow === 'idle' ? 'text-emerald-500 drop-shadow-[0_0_8px_rgba(16,185,129,0.5)] scale-110' : 'text-zinc-600 hover:text-zinc-400'}`}>
+                  className={`flex flex-col items-center gap-1.5 transition-all py-2 ${tab === 'dashboard' && flow === 'idle' ? 'text-emerald-500 drop-shadow-[0_0_8px_rgba(16,185,129,0.5)] scale-110' : 'text-zinc-600 hover:text-zinc-400'}`}>
             <Activity size={22} /><span className="text-[9px] font-black uppercase tracking-widest">Panel</span>
           </button>
           <button onClick={() => { setFlow('idle'); setTab('history'); }}
-                  className={`flex flex-col items-center gap-1.5 transition-all w-16 py-2 ${tab === 'history' ? 'text-emerald-500 drop-shadow-[0_0_8px_rgba(16,185,129,0.5)] scale-110' : 'text-zinc-600 hover:text-zinc-400'}`}>
+                  className={`flex flex-col items-center gap-1.5 transition-all py-2 ${tab === 'history' ? 'text-emerald-500 drop-shadow-[0_0_8px_rgba(16,185,129,0.5)] scale-110' : 'text-zinc-600 hover:text-zinc-400'}`}>
             <LayoutList size={22} /><span className="text-[9px] font-black uppercase tracking-widest">Datos</span>
           </button>
+          <button onClick={() => { setFlow('idle'); setTab('calendar'); }}
+                  className={`flex flex-col items-center gap-1.5 transition-all py-2 ${tab === 'calendar' ? 'text-emerald-500 drop-shadow-[0_0_8px_rgba(16,185,129,0.5)] scale-110' : 'text-zinc-600 hover:text-zinc-400'}`}>
+            <Calendar size={22} /><span className="text-[9px] font-black uppercase tracking-widest">Mes</span>
+          </button>
           <button onClick={() => { setFlow('idle'); setTab('metrics'); }}
-                  className={`flex flex-col items-center gap-1.5 transition-all w-16 py-2 ${tab === 'metrics' ? 'text-emerald-500 drop-shadow-[0_0_8px_rgba(16,185,129,0.5)] scale-110' : 'text-zinc-600 hover:text-zinc-400'}`}>
+                  className={`flex flex-col items-center gap-1.5 transition-all py-2 ${tab === 'metrics' ? 'text-emerald-500 drop-shadow-[0_0_8px_rgba(16,185,129,0.5)] scale-110' : 'text-zinc-600 hover:text-zinc-400'}`}>
             <Heart size={22} /><span className="text-[9px] font-black uppercase tracking-widest">Salud</span>
           </button>
           <button onClick={() => setShowWalkModal(true)}
-                  className="flex flex-col items-center gap-1.5 transition-all w-16 py-2 text-zinc-600 hover:text-zinc-400">
+                  className="flex flex-col items-center gap-1.5 transition-all py-2 text-zinc-600 hover:text-zinc-400">
             <Footprints size={22} /><span className="text-[9px] font-black uppercase tracking-widest">NEAT</span>
           </button>
         </div>
