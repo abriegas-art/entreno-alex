@@ -169,100 +169,209 @@
     } catch (e) { return false; }
   };
 
-  /* "DD/MM" → timestamp aproximado (asume año actual). */
+  /* "D/M" o "DD/MM" → timestamp aproximado (asume año actual). */
   const dateStrToTs = (dmy) => {
-    const m = /^(\d{2})\/(\d{2})$/.exec(dmy || '');
+    const m = /^(\d{1,2})\/(\d{1,2})$/.exec((dmy || '').trim());
     if (!m) return 0;
     const now = new Date();
     return new Date(now.getFullYear(), Number(m[2]) - 1, Number(m[1])).getTime();
   };
+
+  /* Truncado a minuto para deduplicar workouts/walks comparando timestamps. */
+  const tsMinute = (t) => Math.floor((t || 0) / 60000);
+  /* Truncado a día (UTC) para deduplicar pesajes. */
+  const tsDay = (t) => Math.floor((t || 0) / 86400000);
 
   /* ============================================================
      SEED DATA (Excel V5)
      ============================================================ */
   const ts = (iso) => new Date(iso).getTime();
   const SEED_HEALTH = [
-    { date: '27/04', weight: 98.7, waist: 98.0, note: 'Inicio de fase',           timestamp: ts('2026-04-27T08:00:00') },
-    { date: '28/04', weight: 98.9, waist: 97.0, note: '-',                         timestamp: ts('2026-04-28T08:00:00') },
+    { date: '27/04', weight: 98.7, waist: 98,   note: 'Inicio de fase',           timestamp: ts('2026-04-27T08:00:00') },
+    { date: '28/04', weight: 98.9, waist: 97,   note: '-',                         timestamp: ts('2026-04-28T08:00:00') },
     { date: '01/05', weight: 98.5, waist: 96.5, note: 'Mínimo previo',            timestamp: ts('2026-05-01T08:00:00') },
     { date: '02/05', weight: 99.5, waist: 96.5, note: 'Post-hamburguesa',         timestamp: ts('2026-05-02T08:00:00') },
-    { date: '03/05', weight: 98.8, waist: 98.0, note: 'Post-desayuno',            timestamp: ts('2026-05-03T08:00:00') },
-    { date: '04/05', weight: 97.8, waist: 96.0, note: 'Mínimo histórico',         timestamp: ts('2026-05-04T08:00:00') },
-    { date: '05/05', weight: 97.8, waist: 96.0, note: 'Actual',                   timestamp: ts('2026-05-05T08:00:00') },
-    { date: '06/05', weight: 97.8, waist: 95.5, note: '¡Nuevo mínimo histórico!', timestamp: ts('2026-05-06T08:00:00') },
-    { date: '07/05', weight: 97.3, waist: 94.0, note: '¡Riesgo Salud Zero!',      timestamp: ts('2026-05-07T08:00:00') }
+    { date: '03/05', weight: 98.8, waist: 98,   note: 'Post-desayuno',            timestamp: ts('2026-05-03T08:00:00') },
+    { date: '04/05', weight: 97.8, waist: 96,   note: 'Mínimo histórico',         timestamp: ts('2026-05-04T08:00:00') },
+    { date: '05/05', weight: 97.8, waist: 96,   note: '-',                         timestamp: ts('2026-05-05T08:00:00') },
+    { date: '06/05', weight: 97.8, waist: 95.5, note: '¡Nuevo mínimo!',           timestamp: ts('2026-05-06T08:00:00') },
+    { date: '07/05', weight: 97.3, waist: 94,   note: '¡Riesgo Salud Zero!',      timestamp: ts('2026-05-07T08:00:00') },
+    { date: '09/05', weight: 98.4, waist: 94.5, note: 'Burguer ayer',             timestamp: ts('2026-05-09T08:00:00') },
+    { date: '11/05', weight: 99.6, waist: 95,   note: 'Finde duro',               timestamp: ts('2026-05-11T08:00:00') },
+    { date: '12/05', weight: 99.6, waist: 94.5, note: '-',                         timestamp: ts('2026-05-12T08:00:00') },
+    { date: '13/05', weight: 98.3, waist: 94.5, note: '-',                         timestamp: ts('2026-05-13T08:00:00') },
+    { date: '14/05', weight: 98.1, waist: 94.5, note: '-',                         timestamp: ts('2026-05-14T08:00:00') },
+    { date: '15/05', weight: 97.8, waist: 94,   note: '-',                         timestamp: ts('2026-05-15T08:00:00') },
+    { date: '16/05', weight: 97.8, waist: 93.5, note: '-',                         timestamp: ts('2026-05-16T08:00:00') },
+    { date: '18/05', weight: 100,  waist: 94,   note: '-',                         timestamp: ts('2026-05-18T08:00:00') },
+    { date: '19/05', weight: 99.3, waist: 94,   note: '-',                         timestamp: ts('2026-05-19T08:00:00') },
+    { date: '20/05', weight: 98.6, waist: 93,   note: '-',                         timestamp: ts('2026-05-20T08:00:00') },
+    { date: '21/05', weight: 98.7, waist: 93,   note: '-',                         timestamp: ts('2026-05-21T08:00:00') },
+    { date: '23/05', weight: 98.4, waist: 92.5, note: '-',                         timestamp: ts('2026-05-23T08:00:00') },
+    { date: '25/05', weight: 98.6, waist: 92.5, note: '-',                         timestamp: ts('2026-05-25T08:00:00') },
+    { date: '26/05', weight: 97.3, waist: 92,   note: '-',                         timestamp: ts('2026-05-26T08:00:00') },
+    { date: '04/06', weight: 97.3, waist: 92.5, note: '-',                         timestamp: ts('2026-06-04T08:00:00') },
+    { date: '05/06', weight: 97.9, waist: 92,   note: '-',                         timestamp: ts('2026-06-05T08:00:00') },
+    { date: '25/06', weight: 98.5, waist: 93,   note: '-',                         timestamp: ts('2026-06-25T08:00:00') }
   ];
 
   const SEED_WORKOUTS = [
-    {
-      id: 'seed-1', timestamp: ts('2026-04-28T18:00:00'),
-      routine: 'Día A: Empuje + Tracc. Horizontal',
-      log: [
+    { id: 'seed-1',  timestamp: ts('2026-04-28T18:00:00'), routine: 'Día A: Empuje + Tracc. Horizontal', log: [
         { id: 'bench', name: 'Press Banca',       sets: [{reps:6,weight:70},{reps:6,weight:70},{reps:5,weight:70},{reps:5,weight:70}], vol: 1540 },
         { id: 'pull',  name: 'Dominadas',         sets: [{reps:5,weight:0},{reps:4,weight:0},{reps:4,weight:0},{reps:4,weight:0}],     vol: 0 },
         { id: 'sq',    name: 'Sentadilla Goblet', sets: [{reps:10,weight:24},{reps:10,weight:24},{reps:10,weight:24}],                  vol: 720 },
         { id: 'row',   name: 'Remo Barra',        sets: [{reps:6,weight:60},{reps:6,weight:60},{reps:6,weight:60},{reps:6,weight:60}], vol: 1440 }
-      ]
-    },
-    {
-      id: 'seed-2', timestamp: ts('2026-04-29T18:00:00'),
-      routine: 'Día A: Empuje + Tracc. Horizontal',
-      log: [
+    ]},
+    { id: 'seed-2',  timestamp: ts('2026-04-29T18:00:00'), routine: 'Día A: Empuje + Tracc. Horizontal', log: [
         { id: 'bench', name: 'Press Banca',        sets: [{reps:6,weight:70},{reps:6,weight:70},{reps:6,weight:70},{reps:5,weight:70}], vol: 1610 },
         { id: 'pull',  name: 'Dominadas',          sets: [{reps:5,weight:0},{reps:5,weight:0},{reps:5,weight:0},{reps:5,weight:0}],     vol: 0 },
         { id: 'sq',    name: 'Sentadilla Frontal', sets: [{reps:8,weight:40},{reps:8,weight:40},{reps:8,weight:40},{reps:8,weight:40}], vol: 1280 },
         { id: 'row',   name: 'Remo Barra',         sets: [{reps:6,weight:60},{reps:6,weight:60},{reps:6,weight:60},{reps:6,weight:60}], vol: 1440 }
-      ]
-    },
-    {
-      id: 'seed-3', timestamp: ts('2026-04-30T18:30:00'),
-      routine: 'Kettlebell (5 Rondas - 21 min)',
-      log: [
-        { id: 'kb-swing',  name: 'Swing',         sets: Array(5).fill({reps:20,weight:20}), vol: 2000 },
-        { id: 'kb-snatch', name: 'Snatch',        sets: Array(5).fill({reps:16,weight:16}), vol: 1280 },
-        { id: 'kb-goblet', name: 'Goblet Squat',  sets: Array(5).fill({reps:10,weight:20}), vol: 1000 },
-        { id: 'kb-cp',     name: 'Clean & Press', sets: Array(5).fill({reps:12,weight:16}), vol: 960 },
-        { id: 'kb-wm',     name: 'Windmill',      sets: Array(5).fill({reps:10,weight:16}), vol: 800 }
-      ]
-    },
-    {
-      id: 'seed-4', timestamp: ts('2026-05-02T11:00:00'),
-      routine: 'Día B: Empuje + Tracc. Vertical',
-      log: [
+    ]},
+    { id: 'seed-3',  timestamp: ts('2026-04-30T18:30:00'), routine: 'Kettlebell (5 Rondas - 21 min)', log: [
+        { id: 'kb-swing',  name: 'Swing',         sets: [{reps:20,weight:20},{reps:20,weight:20},{reps:20,weight:20},{reps:20,weight:20},{reps:20,weight:20}], vol: 2000 },
+        { id: 'kb-snatch', name: 'Snatch',        sets: [{reps:16,weight:16},{reps:16,weight:16},{reps:16,weight:16},{reps:16,weight:16},{reps:16,weight:16}], vol: 1280 },
+        { id: 'kb-goblet', name: 'Goblet Squat',  sets: [{reps:10,weight:20},{reps:10,weight:20},{reps:10,weight:20},{reps:10,weight:20},{reps:10,weight:20}], vol: 1000 },
+        { id: 'kb-cp',     name: 'Clean & Press', sets: [{reps:12,weight:16},{reps:12,weight:16},{reps:12,weight:16},{reps:12,weight:16},{reps:12,weight:16}], vol: 960 },
+        { id: 'kb-wm',     name: 'Windmill',      sets: [{reps:10,weight:16},{reps:10,weight:16},{reps:10,weight:16},{reps:10,weight:16},{reps:10,weight:16}], vol: 800 }
+    ]},
+    { id: 'seed-4',  timestamp: ts('2026-05-02T11:00:00'), routine: 'Día B: Empuje + Tracc. Vertical', log: [
         { id: 'rdl', name: 'Peso Muerto RDL',   sets: [{reps:6,weight:100},{reps:6,weight:100},{reps:6,weight:100},{reps:6,weight:100}], vol: 2400 },
         { id: 'mil', name: 'Press Militar',     sets: [{reps:6,weight:45},{reps:6,weight:45},{reps:6,weight:45},{reps:6,weight:45}],     vol: 1080 },
         { id: 'lun', name: 'Zancada Invertida', sets: [{reps:8,weight:18},{reps:8,weight:18},{reps:8,weight:18}],                        vol: 432 },
         { id: 'dip', name: 'Fondos Paralelas',  sets: [{reps:7,weight:0},{reps:7,weight:0},{reps:7,weight:0},{reps:7,weight:0}],         vol: 0 }
-      ]
-    },
-    {
-      id: 'seed-5', timestamp: ts('2026-05-04T18:00:00'),
-      routine: 'Día A: Empuje + Tracc. Horizontal',
-      log: [
+    ]},
+    { id: 'seed-5',  timestamp: ts('2026-05-04T18:00:00'), routine: 'Día A: Empuje + Tracc. Horizontal', log: [
         { id: 'bench', name: 'Press Banca',        sets: [{reps:7,weight:70},{reps:7,weight:70},{reps:7,weight:70},{reps:5,weight:70}], vol: 1820 },
         { id: 'pull',  name: 'Dominadas',          sets: [{reps:4,weight:0},{reps:4,weight:0},{reps:5,weight:0},{reps:5,weight:0}],     vol: 0 },
         { id: 'sq',    name: 'Sentadilla Frontal', sets: [{reps:8,weight:50},{reps:8,weight:50},{reps:8,weight:50},{reps:8,weight:50}], vol: 1600 },
         { id: 'row',   name: 'Remo Barra',         sets: [{reps:6,weight:60},{reps:6,weight:60},{reps:6,weight:60},{reps:6,weight:60}], vol: 1440 }
-      ]
-    },
-    {
-      id: 'seed-6', timestamp: ts('2026-05-06T18:00:00'),
-      routine: 'Día B: Empuje + Tracc. Vertical',
-      log: [
+    ]},
+    { id: 'seed-6',  timestamp: ts('2026-05-06T17:17:00'), routine: 'Día B: Empuje + Tracc. Vertical', log: [
         { id: 'mil',  name: 'Press Militar',     sets: [{reps:5,weight:50},{reps:5,weight:50},{reps:5,weight:50},{reps:5,weight:50}], vol: 1000 },
         { id: 'rdl',  name: 'Peso Muerto RDL',   sets: [{reps:6,weight:100},{reps:6,weight:100},{reps:6,weight:100},{reps:6,weight:100}], vol: 2400 },
         { id: 'lun',  name: 'Zancada Invertida', sets: [{reps:9,weight:18},{reps:9,weight:18},{reps:9,weight:18}], vol: 486 },
         { id: 'dip',  name: 'Fondos Paralelas',  sets: [{reps:8,weight:0},{reps:8,weight:0},{reps:8,weight:0},{reps:8,weight:0}], vol: 0 },
+        { id: 'lat',  name: 'Elev. Laterales',   sets: [{reps:10,weight:8},{reps:8,weight:10},{reps:10,weight:10}], vol: 260 },
+        { id: 'fre',  name: 'Press Francés',     sets: [{reps:10,weight:8},{reps:6,weight:10},{reps:10,weight:10}], vol: 240 },
+        { id: 'bird', name: 'Pájaros',           sets: [{reps:10,weight:8},{reps:6,weight:10},{reps:10,weight:10}], vol: 240 }
+    ]},
+    { id: 'seed-7',  timestamp: ts('2026-05-08T19:12:00'), routine: 'Kettlebell (5 Rondas - 19.43 min)', log: [
+        { id: 'kb-swing',  name: 'Swing',         sets: [{reps:20,weight:20},{reps:20,weight:20},{reps:20,weight:20},{reps:20,weight:20},{reps:20,weight:20}], vol: 2000 },
+        { id: 'kb-snatch', name: 'Snatch',        sets: [{reps:8,weight:16},{reps:8,weight:16},{reps:8,weight:16},{reps:8,weight:16},{reps:8,weight:16}], vol: 640 },
+        { id: 'kb-goblet', name: 'Goblet Squat',  sets: [{reps:10,weight:20},{reps:10,weight:20},{reps:10,weight:20},{reps:10,weight:20},{reps:10,weight:20}], vol: 1000 },
+        { id: 'kb-cp',     name: 'Clean & Press', sets: [{reps:6,weight:16},{reps:6,weight:16},{reps:6,weight:16},{reps:6,weight:16},{reps:6,weight:16}], vol: 480 },
+        { id: 'kb-wm',     name: 'Windmill',      sets: [{reps:8,weight:0},{reps:8,weight:0},{reps:8,weight:0},{reps:8,weight:0},{reps:8,weight:0}], vol: 0 }
+    ]},
+    { id: 'seed-8',  timestamp: ts('2026-05-13T17:37:00'), routine: 'Día A: Empuje + Tracc. Horizontal', log: [
+        { id: 'bench', name: 'Press Banca',        sets: [{reps:7,weight:70},{reps:7,weight:70},{reps:7,weight:70},{reps:7,weight:70}], vol: 1960 },
+        { id: 'pull',  name: 'Dominadas',          sets: [{reps:5,weight:0},{reps:5,weight:0},{reps:4.5,weight:0},{reps:4.5,weight:0}], vol: 0 },
+        { id: 'sq',    name: 'Sentadilla Frontal', sets: [{reps:8,weight:60},{reps:8,weight:60},{reps:8,weight:60},{reps:8,weight:6}], vol: 1488 },
+        { id: 'row',   name: 'Remo con Barra',     sets: [{reps:6,weight:60},{reps:6,weight:60},{reps:6,weight:60},{reps:6,weight:60}], vol: 1440 },
+        { id: 'fly',   name: 'Aperturas',          sets: [{reps:10,weight:12},{reps:10,weight:12},{reps:10,weight:12}], vol: 360 },
+        { id: 'drow',  name: 'Remo Mancuerna',     sets: [{reps:10,weight:22},{reps:10,weight:22},{reps:10,weight:22}], vol: 660 },
+        { id: 'curl',  name: 'Curl Bíceps',        sets: [{reps:8,weight:12},{reps:8,weight:12},{reps:8,weight:12}], vol: 288 }
+    ]},
+    { id: 'seed-9',  timestamp: ts('2026-05-15T16:05:00'), routine: 'Día B: Empuje + Tracc. Vertical', log: [
+        { id: 'mil',  name: 'Press Militar',     sets: [{reps:5,weight:50},{reps:5,weight:50},{reps:5,weight:50},{reps:5,weight:50}], vol: 1000 },
+        { id: 'rdl',  name: 'Peso Muerto RDL',   sets: [{reps:6,weight:110},{reps:6,weight:110},{reps:6,weight:110},{reps:6,weight:110}], vol: 2640 },
+        { id: 'lun',  name: 'Zancada Invertida', sets: [{reps:10,weight:18},{reps:10,weight:18},{reps:10,weight:18}], vol: 540 },
+        { id: 'dip',  name: 'Fondos Paralelas',  sets: [{reps:9,weight:0},{reps:9,weight:0},{reps:9,weight:0},{reps:9,weight:0}], vol: 0 },
+        { id: 'lat',  name: 'Elev. Laterales',   sets: [{reps:8,weight:10},{reps:8,weight:10},{reps:8,weight:10}], vol: 240 },
+        { id: 'fre',  name: 'Press Francés',     sets: [{reps:6,weight:10},{reps:6,weight:10},{reps:8,weight:10}], vol: 200 },
+        { id: 'bird', name: 'Pájaros',           sets: [{reps:8,weight:10},{reps:8,weight:10},{reps:8,weight:10}], vol: 240 }
+    ]},
+    { id: 'seed-10', timestamp: ts('2026-05-17T09:51:00'), routine: 'Kettlebell (5 Rondas - 25.21 min)', log: [
+        { id: 'kb-swing',  name: 'Swing',         sets: [{reps:20,weight:20},{reps:20,weight:20},{reps:20,weight:20},{reps:20,weight:20},{reps:20,weight:20}], vol: 2000 },
+        { id: 'kb-snatch', name: 'Snatch',        sets: [{reps:16,weight:16},{reps:16,weight:16},{reps:16,weight:16},{reps:16,weight:16},{reps:16,weight:16}], vol: 1280 },
+        { id: 'kb-goblet', name: 'Goblet Squat',  sets: [{reps:10,weight:20},{reps:10,weight:20},{reps:10,weight:20},{reps:10,weight:20},{reps:10,weight:20}], vol: 1000 },
+        { id: 'kb-cp',     name: 'Clean & Press', sets: [{reps:12,weight:16},{reps:12,weight:16},{reps:12,weight:16},{reps:12,weight:16},{reps:12,weight:16}], vol: 960 },
+        { id: 'kb-wm',     name: 'Windmill',      sets: [{reps:16,weight:16},{reps:16,weight:16},{reps:16,weight:16},{reps:16,weight:16},{reps:16,weight:16}], vol: 1280 }
+    ]},
+    { id: 'seed-11', timestamp: ts('2026-05-18T16:56:00'), routine: 'Día A: Empuje + Tracc. Horizontal', log: [
+        { id: 'bench', name: 'Press Banca',        sets: [{reps:8,weight:70},{reps:8,weight:70},{reps:8,weight:70},{reps:7.5,weight:70}], vol: 2205 },
+        { id: 'pull',  name: 'Dominadas',          sets: [{reps:5,weight:0},{reps:5,weight:0},{reps:4,weight:0},{reps:4.5,weight:0}], vol: 0 },
+        { id: 'sq',    name: 'Sentadilla Frontal', sets: [{reps:6,weight:70},{reps:8,weight:60},{reps:8,weight:60},{reps:8,weight:6}], vol: 1428 },
+        { id: 'row',   name: 'Remo con Barra',     sets: [{reps:7,weight:60},{reps:7,weight:60},{reps:7,weight:60},{reps:7,weight:60}], vol: 1680 },
+        { id: 'fly',   name: 'Aperturas',          sets: [{reps:12,weight:12},{reps:12,weight:12},{reps:12,weight:12}], vol: 432 },
+        { id: 'drow',  name: 'Remo Mancuerna',     sets: [{reps:11,weight:22},{reps:11,weight:22},{reps:11,weight:22}], vol: 726 },
+        { id: 'curl',  name: 'Curl Bíceps',        sets: [{reps:8,weight:12},{reps:8,weight:12},{reps:8,weight:10}], vol: 272 }
+    ]},
+    { id: 'seed-12', timestamp: ts('2026-05-20T16:35:00'), routine: 'Día B: Empuje + Tracc. Vertical', log: [
+        { id: 'mil',  name: 'Press Militar',     sets: [{reps:6,weight:50},{reps:6,weight:50},{reps:6,weight:50},{reps:6,weight:50}], vol: 1200 },
+        { id: 'rdl',  name: 'Peso Muerto RDL',   sets: [{reps:4,weight:120},{reps:5,weight:120},{reps:5,weight:120},{reps:5,weight:120}], vol: 2280 },
+        { id: 'lun',  name: 'Zancada Invertida', sets: [{reps:8,weight:20},{reps:8,weight:20},{reps:8,weight:20}], vol: 480 },
+        { id: 'dip',  name: 'Fondos Paralelas',  sets: [{reps:10,weight:0},{reps:10,weight:0},{reps:10,weight:0},{reps:9,weight:0}], vol: 0 },
         { id: 'lat',  name: 'Elev. Laterales',   sets: [{reps:10,weight:10},{reps:10,weight:10},{reps:10,weight:10}], vol: 300 },
-        { id: 'fre',  name: 'Press Francés',     sets: [{reps:6,weight:10},{reps:6,weight:10},{reps:6,weight:10}], vol: 180 },
-        { id: 'bird', name: 'Pájaros',           sets: [{reps:10,weight:8},{reps:10,weight:8},{reps:10,weight:8}], vol: 240 }
-      ]
-    }
+        { id: 'fre',  name: 'Press Francés',     sets: [{reps:8,weight:10},{reps:10,weight:10},{reps:10,weight:10}], vol: 280 },
+        { id: 'bird', name: 'Pájaros',           sets: [{reps:8,weight:10},{reps:8,weight:10},{reps:8,weight:10}], vol: 240 }
+    ]},
+    { id: 'seed-13', timestamp: ts('2026-05-22T16:21:00'), routine: 'Kettlebell (4 Rondas - 17.53 min)', log: [
+        { id: 'kb-swing',  name: 'Swing',         sets: [{reps:20,weight:24},{reps:20,weight:24},{reps:20,weight:24},{reps:20,weight:24}], vol: 1920 },
+        { id: 'kb-snatch', name: 'Snatch',        sets: [{reps:16,weight:20},{reps:16,weight:20},{reps:16,weight:20},{reps:16,weight:20}], vol: 1280 },
+        { id: 'kb-goblet', name: 'Goblet Squat',  sets: [{reps:10,weight:24},{reps:10,weight:24},{reps:10,weight:24},{reps:10,weight:24}], vol: 960 },
+        { id: 'kb-cp',     name: 'Clean & Press', sets: [{reps:12,weight:20},{reps:12,weight:20},{reps:12,weight:20},{reps:12,weight:20}], vol: 960 },
+        { id: 'kb-wm',     name: 'Windmill',      sets: [{reps:10,weight:0},{reps:10,weight:0},{reps:10,weight:0},{reps:10,weight:0}], vol: 0 }
+    ]},
+    { id: 'seed-14', timestamp: ts('2026-05-25T16:53:00'), routine: 'Día A: Empuje + Tracc. Horizontal', log: [
+        { id: 'bench', name: 'Press Banca',        sets: [{reps:8,weight:70},{reps:8,weight:70},{reps:8,weight:70},{reps:9,weight:70}], vol: 2310 },
+        { id: 'pull',  name: 'Dominadas',          sets: [{reps:5,weight:0},{reps:5,weight:0},{reps:5,weight:0},{reps:5,weight:0}], vol: 0 },
+        { id: 'sq',    name: 'Sentadilla Frontal', sets: [{reps:6,weight:70},{reps:6,weight:70},{reps:6,weight:70},{reps:8,weight:6}], vol: 1308 },
+        { id: 'row',   name: 'Remo con Barra',     sets: [{reps:0,weight:0},{reps:5,weight:70},{reps:6,weight:70},{reps:6,weight:70}], vol: 1190 },
+        { id: 'fly',   name: 'Aperturas',          sets: [{reps:14,weight:12},{reps:14,weight:12},{reps:14,weight:12}], vol: 504 },
+        { id: 'drow',  name: 'Remo Mancuerna',     sets: [{reps:10,weight:24},{reps:10,weight:24},{reps:10,weight:24}], vol: 720 },
+        { id: 'curl',  name: 'Curl Bíceps',        sets: [{reps:9,weight:12},{reps:9,weight:12},{reps:9,weight:10}], vol: 306 }
+    ]},
+    { id: 'seed-15', timestamp: ts('2026-05-31T12:37:00'), routine: 'Kettlebell (5 Rondas - 25 min)', log: [
+        { id: 'kb-swing',  name: 'Swing',         sets: [{reps:20,weight:20},{reps:20,weight:20},{reps:20,weight:20},{reps:20,weight:20},{reps:20,weight:20}], vol: 2000 },
+        { id: 'kb-snatch', name: 'Snatch',        sets: [{reps:16,weight:16},{reps:16,weight:16},{reps:16,weight:16},{reps:16,weight:16},{reps:16,weight:16}], vol: 1280 },
+        { id: 'kb-goblet', name: 'Goblet Squat',  sets: [{reps:10,weight:20},{reps:10,weight:20},{reps:10,weight:20},{reps:10,weight:20},{reps:10,weight:20}], vol: 1000 },
+        { id: 'kb-cp',     name: 'Clean & Press', sets: [{reps:12,weight:16},{reps:12,weight:16},{reps:12,weight:16},{reps:12,weight:16},{reps:12,weight:16}], vol: 960 },
+        { id: 'kb-wm',     name: 'Windmill',      sets: [{reps:10,weight:16},{reps:10,weight:16},{reps:10,weight:16},{reps:10,weight:16},{reps:10,weight:16}], vol: 800 }
+    ]},
+    { id: 'seed-16', timestamp: ts('2026-06-03T16:52:00'), routine: 'Día B: Empuje + Tracc. Vertical', log: [
+        { id: 'mil',  name: 'Press Militar',     sets: [{reps:6,weight:50},{reps:6,weight:50},{reps:6,weight:50},{reps:6,weight:50}], vol: 1200 },
+        { id: 'rdl',  name: 'Peso Muerto RDL',   sets: [{reps:5,weight:120},{reps:5,weight:120},{reps:5,weight:120},{reps:5,weight:120}], vol: 2400 },
+        { id: 'lun',  name: 'Zancada Invertida', sets: [{reps:9,weight:20},{reps:9,weight:20},{reps:9,weight:20}], vol: 540 },
+        { id: 'dip',  name: 'Fondos Paralelas',  sets: [{reps:10,weight:0},{reps:10,weight:0},{reps:10,weight:0},{reps:10,weight:0}], vol: 0 },
+        { id: 'lat',  name: 'Elev. Laterales',   sets: [{reps:10,weight:10},{reps:10,weight:10},{reps:10,weight:10}], vol: 300 },
+        { id: 'fre',  name: 'Press Francés',     sets: [{reps:8,weight:10},{reps:10,weight:10},{reps:10,weight:10}], vol: 280 },
+        { id: 'bird', name: 'Pájaros',           sets: [{reps:8,weight:10},{reps:8,weight:10},{reps:8,weight:10}], vol: 240 }
+    ]},
+    { id: 'seed-17', timestamp: ts('2026-06-07T11:03:00'), routine: 'Día A: Empuje + Tracc. Horizontal', log: [
+        { id: 'bench', name: 'Press Banca',        sets: [{reps:7,weight:75},{reps:7,weight:75},{reps:7,weight:75},{reps:7,weight:75}], vol: 2100 },
+        { id: 'pull',  name: 'Dominadas',          sets: [{reps:6,weight:0},{reps:6,weight:0},{reps:5,weight:0},{reps:5,weight:0}], vol: 0 },
+        { id: 'sq',    name: 'Sentadilla Frontal', sets: [{reps:7,weight:70},{reps:7,weight:70},{reps:6,weight:70},{reps:7,weight:70}], vol: 1890 },
+        { id: 'row',   name: 'Remo con Barra',     sets: [{reps:6,weight:70},{reps:6,weight:70},{reps:5,weight:70},{reps:4,weight:70}], vol: 1470 },
+        { id: 'fly',   name: 'Aperturas',          sets: [{reps:15,weight:12},{reps:15,weight:12},{reps:15,weight:12}], vol: 540 },
+        { id: 'drow',  name: 'Remo Mancuerna',     sets: [{reps:10,weight:24},{reps:10,weight:24},{reps:10,weight:24}], vol: 720 },
+        { id: 'curl',  name: 'Curl Bíceps',        sets: [{reps:10,weight:12},{reps:9,weight:12},{reps:10,weight:10}], vol: 328 }
+    ]},
+    { id: 'seed-18', timestamp: ts('2026-06-08T16:24:00'), routine: 'Día B: Empuje + Tracc. Vertical', log: [
+        { id: 'mil',  name: 'Press Militar',     sets: [{reps:7,weight:50},{reps:7,weight:50},{reps:6,weight:50},{reps:6,weight:50}], vol: 1300 },
+        { id: 'rdl',  name: 'Peso Muerto RDL',   sets: [{reps:5,weight:120},{reps:5,weight:120},{reps:6,weight:120},{reps:6,weight:120}], vol: 2640 },
+        { id: 'lun',  name: 'Zancada Invertida', sets: [{reps:10,weight:20},{reps:10,weight:20},{reps:10,weight:20}], vol: 600 },
+        { id: 'dip',  name: 'Fondos Paralelas',  sets: [{reps:10,weight:0},{reps:10,weight:0},{reps:10,weight:0},{reps:10,weight:0}], vol: 0 },
+        { id: 'lat',  name: 'Elev. Laterales',   sets: [{reps:11,weight:10},{reps:11,weight:10},{reps:11,weight:10}], vol: 330 },
+        { id: 'fre',  name: 'Press Francés',     sets: [{reps:11,weight:10},{reps:11,weight:10},{reps:11,weight:10}], vol: 330 },
+        { id: 'bird', name: 'Pájaros',           sets: [{reps:9,weight:10},{reps:9,weight:10},{reps:9,weight:10}], vol: 270 }
+    ]}
+  ];
+
+  const SEED_WALKS = [
+    { timestamp: ts('2026-05-08T20:49:00'), minutes: 90 },
+    { timestamp: ts('2026-05-10T21:01:00'), minutes: 40 },
+    { timestamp: ts('2026-05-11T20:44:00'), minutes: 47 },
+    { timestamp: ts('2026-05-12T21:01:00'), minutes: 60 },
+    { timestamp: ts('2026-05-16T10:16:00'), minutes: 45 },
+    { timestamp: ts('2026-05-17T11:59:00'), minutes: 60 },
+    { timestamp: ts('2026-05-23T11:07:00'), minutes: 90 }
   ];
 
   /* Versión del seed: incrementa al añadir entradas nuevas. La migración inyecta
-     en localStorage solo las que faltan, sin tocar lo que el usuario haya añadido. */
-  const SEED_VERSION = 2;
+     en localStorage solo las que faltan (comparando por timestamp redondeado).
+     v3: añadidos seed-7..18, pesajes 09/05–25/06, walks 8/5–23/5. */
+  const SEED_VERSION = 3;
   const SEED_VERSION_KEY = 'alex_seed_version';
 
   /* ============================================================
@@ -276,9 +385,84 @@
     { name: 'Windmill',      id: 'kb-wm',     reps: 10, weight: 16 }
   ];
 
+  /* ---- PLAN INTEGRAL (v13): Fuerza DME + Intervalos aeróbicos ---- */
+  const REST_STRENGTH = 180; // 3 min estrictos entre series
+
+  /* Protocolo carrera: 5' caminar + 6×(2' trote Z2 + 1.5' caminata) + 5' enfriar = 31 min */
+  const RUN_BLOCKS = 6;
+  const RUN_PHASES = (() => {
+    const p = [{ kind: 'warm', label: 'Calentamiento', sub: 'Caminata a paso ligero', secs: 300 }];
+    for (let b = 1; b <= RUN_BLOCKS; b++) {
+      p.push({ kind: 'run',  label: 'Trote', sub: 'Zona 2 · umbral aeróbico', secs: 120, block: b });
+      p.push({ kind: 'walk', label: 'Caminata activa', sub: 'Recupera sin parar', secs: 90, block: b });
+    }
+    p.push({ kind: 'cool', label: 'Enfriamiento', sub: 'Caminata suave', secs: 300 });
+    let acc = 0;
+    return p.map(x => { const o = { ...x, start: acc }; acc += x.secs; return o; });
+  })();
+  const RUN_TOTAL = RUN_PHASES.reduce((a, p) => a + p.secs, 0);
+  const RUN_NAME = 'Carrera: Intervalos 6×(2\' + 1.5\')';
+  const runPhaseAt = (elapsed) => {
+    for (let i = 0; i < RUN_PHASES.length; i++) {
+      const p = RUN_PHASES[i];
+      if (elapsed < p.start + p.secs) return { idx: i, phase: p, left: p.start + p.secs - elapsed };
+    }
+    return { idx: RUN_PHASES.length, phase: null, left: 0 };
+  };
+  const fmtMS = (s) => `${Math.floor(s / 60)}:${String(Math.max(0, Math.floor(s % 60))).padStart(2, '0')}`;
+
+  /* Semana: 0=Domingo ... 6=Sábado */
+  const WEEK_PLAN = {
+    1: { key: 'FA',  label: 'Fuerza · Full Body A', short: 'FA' },
+    2: { key: 'RUN', label: 'Carrera · Intervalos', short: 'RUN' },
+    3: { key: null,  label: 'Descanso / NEAT activo', short: 'NEAT' },
+    4: { key: 'FB',  label: 'Fuerza · Full Body B', short: 'FB' },
+    5: { key: 'RUN', label: 'Carrera · Intervalos', short: 'RUN' },
+    6: { key: null,  label: 'Descanso', short: '—' },
+    0: { key: null,  label: 'Descanso', short: '—' }
+  };
+
   const ROUTINES = {
+    FA: {
+      type: 'strength',
+      name: 'Full Body A: Empuje + Cuádriceps',
+      prep: 'Movilidad 5-10\' + series de aproximación progresivas',
+      tag: 'Plan actual',
+      exercises: [
+        { id: 'bsq', name: 'Sentadilla Trasera', series: 3, reps: 5, weight: 80, rest: REST_STRENGTH,
+          target: '3 × 5 · 80 kg',
+          note: 'Bracing fuerte (Valsalva) para proteger la lumbar. Si hay molestia → Sentadilla Frontal.',
+          alt: { id: 'sq', name: 'Sentadilla Frontal', reps: 5, weight: 60 } },
+        { id: 'bench', name: 'Press Banca', series: 3, reps: 6, weight: 70, rest: REST_STRENGTH,
+          target: '3 × 6-8 · 70-75 kg', note: 'Cuando completes 3×8 con 70 kg, sube a 75 kg.' },
+        { id: 'row', name: 'Remo con Barra', series: 3, reps: 6, weight: 60, rest: REST_STRENGTH,
+          target: '3 × 6 · 60 kg' }
+      ]
+    },
+    FB: {
+      type: 'strength',
+      name: 'Full Body B: Tracción + Cadena Posterior',
+      prep: 'Movilidad 5-10\' + series de aproximación progresivas',
+      tag: 'Plan actual',
+      exercises: [
+        { id: 'dl', name: 'Peso Muerto', series: 2, reps: 5, weight: 130, rest: REST_STRENGTH,
+          target: '2 × 5 · 130 kg', note: 'Solo 2 series: alta demanda sobre el sistema nervioso central.' },
+        { id: 'mil', name: 'Press Militar', series: 3, reps: 5, weight: 55, rest: REST_STRENGTH,
+          target: '3 × 5 · 55 kg' },
+        { id: 'pull', name: 'Dominadas', series: 3, reps: 6, weight: 0, rest: REST_STRENGTH,
+          target: '3 × 6 · peso corporal', note: 'Peso = lastre añadido (0 = peso corporal).' }
+      ]
+    },
+    RUN: {
+      type: 'run',
+      name: RUN_NAME,
+      prep: '6 bloques · 31 min. Mantén este esquema 3-4 semanas',
+      tag: 'Plan actual',
+      exercises: []
+    },
     A: {
       type: 'strength',
+      legacy: true,
       name: 'Día A: Empuje + Tracc. Horizontal',
       prep: 'Isométrico pared (3x45") · ¡Obligatorio!',
       exercises: [
@@ -301,6 +485,7 @@
     },
     B: {
       type: 'strength',
+      legacy: true,
       name: 'Día B: Empuje + Tracc. Vertical',
       prep: 'Monster Walk / Glute Bridge (3x15)',
       exercises: [
@@ -323,6 +508,7 @@
     },
     KB: {
       type: 'kb',
+      legacy: true,
       name: 'Sesión Kettlebell',
       prep: 'Movilidad articular completa',
       exercises: []
@@ -481,12 +667,20 @@
     return <div className="relative h-72 w-full"><canvas ref={ref} /></div>;
   };
 
+  /* Básicos del plan actual. factor = múltiplo del peso corporal como meta de 1RM. */
+  const STRENGTH_LIFTS = [
+    { id: 'bsq',   label: 'Sentadilla', factor: 1.5 },
+    { id: 'bench', label: 'Banca',      factor: 1.0 },
+    { id: 'dl',    label: 'P. Muerto',  factor: 1.8 },
+    { id: 'mil',   label: 'Militar',    factor: 0.75 }
+  ];
+
   const StrengthChart = ({ lifts, targets }) => {
     const ref = useRef(null);
     useEffect(() => {
       if (!ref.current || typeof Chart === 'undefined') return;
-      const labels = ['Banca', 'RDL', 'Frontal', 'Militar'];
-      const ids = ['bench', 'rdl', 'sq', 'mil'];
+      const labels = STRENGTH_LIFTS.map(l => l.label);
+      const ids = STRENGTH_LIFTS.map(l => l.id);
       const current   = ids.map(i => lifts[i] || 0);
       const remaining = ids.map(i => Math.max(0, (targets[i] || 0) - (lifts[i] || 0)));
       const reachedColors = ids.map(i => (lifts[i] || 0) >= (targets[i] || 0) ? '#fbbf24' : '#10b981');
@@ -577,6 +771,13 @@
     const [kbTime, setKbTime] = useState('');
     const [kbRounds, setKbRounds] = useState('');
 
+    /* Carrera guiada: tiempos por timestamp (inmune a background) */
+    const [runState, setRunState] = useState(null); // { startedAt, pausedAt, pausedTotal, lastIdx }
+    const [runNow, setRunNow] = useState(Date.now());
+    const [runResult, setRunResult] = useState({ blocks: '', minutes: '', note: '' });
+    const [showLegacy, setShowLegacy] = useState(false);
+    const [showGuide, setShowGuide] = useState(false);
+
     const [calMonth, setCalMonth] = useState(() => {
       const d = new Date(); return new Date(d.getFullYear(), d.getMonth(), 1);
     });
@@ -594,7 +795,7 @@
 
       let w = (lw && lw.length > 0) ? lw.slice() : SEED_WORKOUTS.slice();
       let h = (lh && lh.length > 0) ? lh.slice() : SEED_HEALTH.slice();
-      const k = lk || [];
+      let k = (lk && lk.length > 0) ? lk.slice() : SEED_WALKS.slice();
 
       // Retrofit de id en entrenos antiguos sin id
       let migratedW = false;
@@ -611,27 +812,37 @@
 
       if (!lw || lw.length === 0 || migratedW) storage.save(KEYS.WORKOUTS, w);
       if (!lh || lh.length === 0 || migratedH) storage.save(KEYS.HEALTH, h);
-      if (!lk) storage.save(KEYS.WALKS, k);
+      if (!lk || lk.length === 0) storage.save(KEYS.WALKS, k);
 
-      // Inyección incremental de seed (solo entradas que faltan, una vez por bump de SEED_VERSION).
+      // Inyección incremental de seed: dedup por timestamp-minuto (workouts/walks) o timestamp-día (health).
+      // Esto evita duplicados si el usuario ya logueó la misma sesión manualmente.
       if (sv < SEED_VERSION) {
         let injectedW = false;
-        const wIds = new Set(w.map(x => x.id));
+        const wMins = new Set(w.map(x => tsMinute(x.timestamp)));
         SEED_WORKOUTS.forEach(s => {
-          if (!wIds.has(s.id)) { w.push(s); injectedW = true; }
+          if (!wMins.has(tsMinute(s.timestamp))) { w.push(s); injectedW = true; wMins.add(tsMinute(s.timestamp)); }
         });
         if (injectedW) {
           w.sort((a, b) => a.timestamp - b.timestamp);
           storage.save(KEYS.WORKOUTS, w);
         }
         let injectedH = false;
-        const hDates = new Set(h.map(x => x.date));
+        const hDays = new Set(h.map(x => tsDay(x.timestamp || dateStrToTs(x.date))));
         SEED_HEALTH.forEach(s => {
-          if (!hDates.has(s.date)) { h.push(s); injectedH = true; }
+          if (!hDays.has(tsDay(s.timestamp))) { h.push(s); injectedH = true; hDays.add(tsDay(s.timestamp)); }
         });
         if (injectedH) {
           h.sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
           storage.save(KEYS.HEALTH, h);
+        }
+        let injectedK = false;
+        const kMins = new Set(k.map(x => tsMinute(x.timestamp)));
+        SEED_WALKS.forEach(s => {
+          if (!kMins.has(tsMinute(s.timestamp))) { k.push(s); injectedK = true; kMins.add(tsMinute(s.timestamp)); }
+        });
+        if (injectedK) {
+          k.sort((a, b) => a.timestamp - b.timestamp);
+          storage.save(KEYS.WALKS, k);
         }
         storage.save(SEED_VERSION_KEY, SEED_VERSION);
       }
@@ -662,12 +873,35 @@
       if (isActive && activeRoutine) {
         storage.save(KEYS.SESSION, {
           flow, activeRoutine, exerciseIndex, currentSets, sessionLog,
-          sessionStartedAt, kbTime, kbRounds
+          sessionStartedAt, kbTime, kbRounds, runState, runResult
         });
       } else {
         storage.remove(KEYS.SESSION);
       }
-    }, [flow, activeRoutine, exerciseIndex, currentSets, sessionLog, kbTime, kbRounds]);
+    }, [flow, activeRoutine, exerciseIndex, currentSets, sessionLog, kbTime, kbRounds, runState, runResult]);
+
+    /* --- Tick de carrera + aviso en cada cambio de fase --- */
+    const runElapsed = runState
+      ? Math.max(0, ((runState.pausedAt || runNow) - runState.startedAt - (runState.pausedTotal || 0)) / 1000)
+      : 0;
+    const runPos = runPhaseAt(runElapsed);
+    useEffect(() => {
+      if (!runState || flow !== 'workout') return;
+      const id = setInterval(() => setRunNow(Date.now()), 250);
+      return () => clearInterval(id);
+    }, [runState, flow]);
+    useEffect(() => {
+      if (!runState || flow !== 'workout' || runState.pausedAt) return;
+      if (runPos.idx !== runState.lastIdx) {
+        if (runState.lastIdx != null && runState.lastIdx >= 0) {
+          beep();
+          const next = RUN_PHASES[runPos.idx];
+          vibrate(next && next.kind === 'run' ? [400, 150, 400] : [220, 120, 220]);
+        }
+        setRunState(s => s ? { ...s, lastIdx: runPos.idx } : s);
+        if (runPos.idx >= RUN_PHASES.length) finishRun(true);
+      }
+    }, [runPos.idx, runState, flow]);
 
     /* --- Wake Lock (mantiene pantalla encendida durante el entreno) --- */
     useEffect(() => {
@@ -866,6 +1100,8 @@
       setTimerActive(false);
       setKbTime('');
       setKbRounds('');
+      setRunState(null);
+      setRunResult({ blocks: '', minutes: '', note: '' });
       storage.remove(KEYS.SESSION);
     };
 
@@ -894,26 +1130,51 @@
       return best;
     };
 
-    const lifts = useMemo(() => ({
-      bench: get1RM('bench'),
-      rdl:   get1RM('rdl'),
-      sq:    get1RM('sq'),
-      mil:   get1RM('mil')
-    }), [workouts]);
+    const lifts = useMemo(() => {
+      const o = {}; STRENGTH_LIFTS.forEach(l => { o[l.id] = get1RM(l.id); }); return o;
+    }, [workouts]);
     const targets = useMemo(() => {
       const bw = currentWeight || 95;
-      return {
-        bench: Math.round(bw),
-        rdl:   Math.round(bw * 1.8),
-        sq:    Math.round(bw * 1.5),
-        mil:   Math.round(bw * 0.75)
-      };
+      const o = {}; STRENGTH_LIFTS.forEach(l => { o[l.id] = Math.round(bw * l.factor); }); return o;
     }, [currentWeight]);
 
-    const getDaysTrained = (days) => {
+    const isRun = (w) => w && w.kind === 'run';
+    const getDaysTrained = (days, filter) => {
       const limit = Date.now() - days * 86400000;
-      return workouts.filter(w => w.timestamp > limit).length;
+      return workouts.filter(w => w.timestamp > limit && (!filter || filter(w))).length;
     };
+
+    /* --- Plan semanal: estado de la semana en curso (L-D) --- */
+    const routineKeyOf = (w) => {
+      if (isRun(w)) return 'RUN';
+      const k = Object.keys(ROUTINES).find(k => ROUTINES[k].name === w.routine);
+      return k || null;
+    };
+    const weekPlanStatus = useMemo(() => {
+      const today = new Date(); today.setHours(0, 0, 0, 0);
+      const monday = new Date(today); monday.setDate(today.getDate() - ((today.getDay() + 6) % 7));
+      const out = [];
+      for (let i = 0; i < 7; i++) {
+        const d = new Date(monday); d.setDate(monday.getDate() + i);
+        const plan = WEEK_PLAN[d.getDay()];
+        const dayW = workouts.filter(w => new Date(w.timestamp).toDateString() === d.toDateString());
+        const dayK = walks.filter(w => new Date(w.timestamp).toDateString() === d.toDateString());
+        const keys = dayW.map(routineKeyOf);
+        const done = plan.key ? keys.includes(plan.key) : (plan.short === 'NEAT' ? dayK.length > 0 : false);
+        out.push({ d, plan, done, other: dayW.length > 0 && !done, isToday: d.getTime() === today.getTime(), isPast: d < today });
+      }
+      return out;
+    }, [workouts, walks]);
+    const todayPlan = WEEK_PLAN[new Date().getDay()];
+
+    /* --- Progresión carrera: semanas con el esquema actual --- */
+    const runStats = useMemo(() => {
+      const runs = workouts.filter(isRun);
+      if (runs.length === 0) return { count: 0, weeks: 0, first: null, last: null };
+      const first = runs[0].timestamp;
+      const weeks = Math.floor((Date.now() - first) / (7 * 86400000)) + 1;
+      return { count: runs.length, weeks, first, last: runs[runs.length - 1] };
+    }, [workouts]);
 
     /* --- Calendario semanal --- */
     const renderActivityLine = () => {
@@ -921,11 +1182,12 @@
       const days = [];
       for (let i = 6; i >= 0; i--) {
         const d = new Date(today); d.setDate(d.getDate() - i);
-        const isW = workouts.some(w => new Date(w.timestamp).toDateString() === d.toDateString());
-        const isA = walks.some(w => new Date(w.timestamp).toDateString() === d.toDateString());
+        const isW = workouts.some(w => !isRun(w) && new Date(w.timestamp).toDateString() === d.toDateString());
+        const isR = workouts.some(w => isRun(w) && new Date(w.timestamp).toDateString() === d.toDateString());
+        const isA = isR || walks.some(w => new Date(w.timestamp).toDateString() === d.toDateString());
         days.push({
           n: d.toLocaleDateString('es-ES', { weekday: 'short' }).charAt(0).toUpperCase(),
-          d: d.getDate(), isW, isA, isToday: i === 0
+          d: d.getDate(), isW, isA, isR, isToday: i === 0
         });
       }
       return (
@@ -940,7 +1202,9 @@
                 'w-8 bg-zinc-950 border-zinc-900'
               }`}>
                 {day.isW && <LayoutList size={12} className="text-zinc-950" />}
-                {day.isA && <Activity size={12} className={day.isW && day.isA ? 'text-zinc-950' : 'text-teal-500'} />}
+                {day.isA && (day.isR
+                  ? <Footprints size={12} className={day.isW ? 'text-zinc-950' : 'text-sky-400'} />
+                  : <Activity size={12} className={day.isW && day.isA ? 'text-zinc-950' : 'text-teal-500'} />)}
               </div>
               <span className={`text-[10px] font-bold ${day.isW || day.isA ? 'text-emerald-500' : 'text-zinc-700'}`}>{day.d}</span>
             </div>
@@ -958,8 +1222,88 @@
       setSessionLog([]);
       setKbTime('');
       setKbRounds('');
+      setRunState(null);
+      setRunResult({ blocks: '', minutes: '', note: '' });
       setSessionStartedAt(Date.now());
       setFlow('prep');
+    };
+
+    /* --- Carrera guiada --- */
+    const startRun = () => {
+      beep(); // desbloquea el audio con el gesto del usuario
+      vibrate(60);
+      setRunState({ startedAt: Date.now(), pausedAt: null, pausedTotal: 0, lastIdx: 0 });
+      setRunNow(Date.now());
+      setFlow('workout');
+    };
+    const toggleRunPause = () => {
+      setRunState(s => {
+        if (!s) return s;
+        if (s.pausedAt) return { ...s, pausedTotal: s.pausedTotal + (Date.now() - s.pausedAt), pausedAt: null };
+        return { ...s, pausedAt: Date.now() };
+      });
+      vibrate(20);
+    };
+    const skipRunPhase = () => {
+      // Adelanta el reloj hasta el inicio de la fase siguiente
+      setRunState(s => {
+        if (!s) return s;
+        const shift = runPos.left * 1000 + 50;
+        return s.pausedAt ? { ...s, pausedTotal: s.pausedTotal - shift } : { ...s, startedAt: s.startedAt - shift };
+      });
+    };
+    const finishRun = (completed = false) => {
+      const el = completed ? RUN_TOTAL : runElapsed;
+      const pos = runPhaseAt(el);
+      // Bloques completos = fases de trote terminadas
+      const blocks = completed ? RUN_BLOCKS
+        : RUN_PHASES.filter(p => p.kind === 'run' && p.start + p.secs <= el).length;
+      const runSecs = RUN_PHASES.filter(p => p.kind === 'run')
+        .reduce((a, p) => a + Math.max(0, Math.min(p.secs, el - p.start)), 0);
+      setRunResult(r => ({ ...r, blocks: String(blocks), minutes: String(Math.round(el / 60)),
+        runMinutes: Math.round(runSecs / 6) / 10 }));
+      setRunState(s => s ? { ...s, pausedAt: s.pausedAt || Date.now(), lastIdx: pos.idx } : s);
+      if (completed) { beep(); vibrate([300, 100, 300, 100, 600]); }
+      setFlow('summary');
+    };
+    const askFinishRun = () => setConfirm({
+      title: 'Terminar carrera',
+      message: 'Se registrará lo que llevas hecho. Podrás ajustar bloques y minutos antes de guardar.',
+      confirmLabel: 'Terminar', confirmColor: 'emerald',
+      onConfirm: () => { setConfirm(null); finishRun(false); }
+    });
+    const saveRun = () => {
+      const blocks = Math.max(0, Math.min(RUN_BLOCKS, parseInt(runResult.blocks, 10) || 0));
+      const minutes = Number(String(runResult.minutes).replace(',', '.')) || 0;
+      if (minutes <= 0) {
+        setConfirm({ title: 'Sin tiempo registrado', message: 'Indica los minutos totales de la sesión.',
+          confirmLabel: 'OK', confirmColor: 'zinc', onConfirm: () => setConfirm(null) });
+        return;
+      }
+      setIsSaving(true);
+      vibrate([40, 60, 40]);
+      const runMinutes = runResult.runMinutes != null ? runResult.runMinutes : blocks * 2;
+      const entry = {
+        id: uid(), timestamp: Date.now(), routine: RUN_NAME, kind: 'run',
+        run: { blocks, totalBlocks: RUN_BLOCKS, minutes, runMinutes, note: (runResult.note || '').trim() },
+        log: []
+      };
+      persist(KEYS.WORKOUTS, [...workouts, entry], setWorkouts);
+      setTimeout(() => { setIsSaving(false); storage.remove(KEYS.SESSION); setFlow('finished'); }, 300);
+    };
+
+    /* Sustituye el ejercicio actual por su alternativa (p.ej. Trasera → Frontal) */
+    const swapToAlt = () => {
+      const ex = activeRoutine.exercises[exerciseIndex];
+      if (!ex.alt) return;
+      const swapped = { ...ex, id: ex.alt.id, name: ex.alt.name, reps: ex.alt.reps, weight: ex.alt.weight,
+        target: `${ex.series} × ${ex.alt.reps} · alternativa`, note: 'Sustituida por molestia lumbar.',
+        alt: { id: ex.id, name: ex.name, reps: ex.reps, weight: ex.weight } };
+      const exercises = activeRoutine.exercises.map((e, i) => i === exerciseIndex ? swapped : e);
+      const r = { ...activeRoutine, exercises };
+      setActiveRoutine(r);
+      const lastVals = getLastSessionValues(r.name);
+      initExercise(swapped, false, lastVals);
     };
 
     /* Inicializa los inputs de un ejercicio.
@@ -1138,6 +1482,9 @@
       setSessionStartedAt(s.sessionStartedAt || Date.now());
       setKbTime(s.kbTime || '');
       setKbRounds(s.kbRounds || '');
+      setRunState(s.runState || null);
+      setRunResult(s.runResult || { blocks: '', minutes: '', note: '' });
+      setRunNow(Date.now());
       setFlow(s.flow);
       setResumePrompt(null);
     };
@@ -1147,6 +1494,18 @@
     };
 
     /* --- Export CSV --- */
+    const runCsv = () => {
+      const runs = workouts.filter(isRun);
+      if (runs.length === 0) return '';
+      let csv = '\n=== CARRERA (Intervalos) ===\n';
+      csv += 'Fecha,Hora,Bloques,Bloques Plan,Min Totales,Min Trote,Notas\n';
+      runs.forEach(w => {
+        const dt = new Date(w.timestamp); const r = w.run || {};
+        csv += [dt.toLocaleDateString('es-ES'), dt.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }),
+          r.blocks, r.totalBlocks, r.minutes, r.runMinutes, csvCell(r.note || '')].join(',') + '\n';
+      });
+      return csv;
+    };
     const exportData = (mode) => {
       const today = new Date().toLocaleDateString('es-ES').replace(/\//g, '-');
       let csv = ''; let filename = '';
@@ -1160,6 +1519,7 @@
             csv += [d, h, csvCell(w.routine), csvCell(l.name), i + 1, s.reps, s.weight].join(',') + '\n';
           }));
         });
+        csv += runCsv();
         filename = `Entrenos_Alex_${today}.csv`;
       } else if (mode === 'health') {
         csv = 'Fecha,Peso (KG),Cintura (CM),Notas\n';
@@ -1193,6 +1553,7 @@
           csv += [d, h, csvCell(w.routine), csvCell(l.name), i + 1, s.reps, s.weight, l.vol || ''].join(',') + '\n';
         }));
       });
+      csv += runCsv();
       csv += '\n=== NEAT (Caminatas) ===\n';
       csv += 'Fecha,Hora,Minutos\n';
       walks.forEach(w => {
@@ -1215,6 +1576,15 @@
       const totalVol = (w.log || []).reduce((a, b) => a + (b.vol || 0), 0);
       const totalSets = (w.log || []).reduce((a, b) => a + (b.sets || []).length, 0);
       return { exCount, totalVol, totalSets };
+    };
+
+    const workoutLine = (w) => {
+      if (isRun(w)) {
+        const r = w.run || {};
+        return `${r.blocks ?? 0}/${r.totalBlocks ?? RUN_BLOCKS} BLOQUES · ${r.runMinutes ?? 0}' TROTE · ${r.minutes ?? 0} MIN`;
+      }
+      const sum = summarizeWorkout(w);
+      return `${sum.exCount} EJ · ${sum.totalSets} SERIES · ${sum.totalVol} KG`;
     };
 
     /* --- Calendario --- */
@@ -1272,9 +1642,91 @@
         {/* DASHBOARD */}
         {tab === 'dashboard' && flow === 'idle' && (
           <div className="p-5 space-y-6 anim-fade">
-            <Button3D onClick={() => setFlow('selection')} className="w-full text-sm" color="emerald">
-              <Play size={20} fill="currentColor" className="mr-1 mb-0.5" /> Iniciar Sesión de Hoy
-            </Button3D>
+            {todayPlan.key ? (
+              <div className="space-y-3">
+                <Button3D onClick={() => startSession(todayPlan.key)} className="w-full text-sm" color="emerald">
+                  <Play size={20} fill="currentColor" className="mr-1 mb-0.5" /> Hoy: {todayPlan.label}
+                </Button3D>
+                <button onClick={() => setFlow('selection')} className="w-full text-[10px] font-black uppercase tracking-widest text-zinc-500 py-2">
+                  Elegir otra sesión
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <div className="bg-zinc-900/60 border border-zinc-800 rounded-2xl p-4 text-center">
+                  <p className="text-[10px] font-black uppercase tracking-widest text-zinc-500">Hoy toca</p>
+                  <p className="text-base font-black uppercase mt-1 text-teal-400">{todayPlan.label}</p>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <Button3D onClick={() => setShowWalkModal(true)} color="zinc" className="w-full">
+                    <Footprints size={16} className="text-teal-500" /> NEAT
+                  </Button3D>
+                  <Button3D onClick={() => setFlow('selection')} color="zinc" className="w-full">
+                    <Play size={16} /> Entrenar
+                  </Button3D>
+                </div>
+              </div>
+            )}
+
+            <section className="bg-zinc-900/60 border border-zinc-800 p-5 rounded-[2rem] shadow-xl">
+              <h3 className="text-[10px] font-black uppercase text-zinc-500 tracking-widest mb-4 flex items-center gap-2">
+                <Calendar size={14} className="text-emerald-500" /> Plan de la Semana
+              </h3>
+              <div className="grid grid-cols-7 gap-1.5">
+                {weekPlanStatus.map((x, i) => {
+                  const k = x.plan.key;
+                  const base = k === 'RUN' ? 'border-sky-500/40 text-sky-300' : (k ? 'border-emerald-500/40 text-emerald-300' : 'border-zinc-800 text-zinc-600');
+                  const fill = x.done ? (k === 'RUN' ? 'bg-sky-500 text-zinc-950 border-sky-400' : (k ? 'bg-emerald-500 text-zinc-950 border-emerald-400' : 'bg-teal-500/30 text-teal-200 border-teal-500'))
+                    : (x.isPast && k ? 'bg-red-500/10 border-red-500/30 text-red-400/70' : 'bg-zinc-950/60');
+                  return (
+                    <div key={i} className="flex flex-col items-center gap-1.5">
+                      <span className={`text-[9px] font-bold ${x.isToday ? 'text-emerald-500' : 'text-zinc-500'}`}>
+                        {['D','L','M','X','J','V','S'][x.d.getDay()]}
+                      </span>
+                      <div className={`w-full aspect-square rounded-xl border-2 flex items-center justify-center text-[9px] font-black ${base} ${fill} ${x.isToday ? 'ring-2 ring-emerald-400/60' : ''}`}>
+                        {x.done ? '✓' : x.plan.short}
+                      </div>
+                      {x.other && <span className="w-1.5 h-1.5 rounded-full bg-amber-400" title="Otra sesión" />}
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="mt-4 pt-4 border-t border-zinc-800/40 grid grid-cols-2 gap-3 text-center">
+                <div>
+                  <p className="text-xl font-black text-emerald-400">{weekPlanStatus.filter(x => x.done && (x.plan.key === 'FA' || x.plan.key === 'FB')).length}<span className="text-zinc-600 text-sm">/2</span></p>
+                  <p className="text-[9px] font-bold text-zinc-500 uppercase tracking-widest">Fuerza</p>
+                </div>
+                <div>
+                  <p className="text-xl font-black text-sky-400">{weekPlanStatus.filter(x => x.done && x.plan.key === 'RUN').length}<span className="text-zinc-600 text-sm">/2</span></p>
+                  <p className="text-[9px] font-bold text-zinc-500 uppercase tracking-widest">Carrera</p>
+                </div>
+              </div>
+              {runStats.count > 0 && (
+                <p className={`text-[9px] font-bold uppercase tracking-widest text-center mt-4 ${runStats.weeks >= 3 ? 'text-amber-400' : 'text-zinc-500'}`}>
+                  Esquema carrera: semana {runStats.weeks} · {runStats.count} sesiones
+                  {runStats.weeks >= 3 ? ' · Valora progresar tras la sem. 4' : ' · Mantener 3-4 semanas'}
+                </p>
+              )}
+              <button onClick={() => setShowGuide(v => !v)} className="w-full mt-4 text-[10px] font-black uppercase tracking-widest text-zinc-500 flex items-center justify-center gap-1">
+                <Info size={12} /> {showGuide ? 'Ocultar pautas' : 'Ver pautas del plan'}
+              </button>
+              {showGuide && (
+                <div className="mt-4 space-y-4 text-xs text-zinc-400 leading-relaxed anim-fade">
+                  <div>
+                    <p className="text-[10px] font-black uppercase tracking-widest text-emerald-400 mb-1">Fuerza (dosis mínima efectiva)</p>
+                    <p>RIR 1-2: no llegues al fallo · 3 min estrictos entre series · 5-10' de movilidad y series de aproximación antes de las efectivas.</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-black uppercase tracking-widest text-sky-400 mb-1">Carrera</p>
+                    <p>5' caminar + 6 × (2' trote Z2 + 1.5' caminata) + 5' enfriar. Mismo esquema 3-4 semanas para que Aquiles y rotuliano toleren el impacto. Nunca dos días seguidos de la misma disciplina.</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-black uppercase tracking-widest text-amber-400 mb-1">Nutrición (sin contar calorías)</p>
+                    <p>Proteína magra en cada comida · mínimo de aceites, frutos secos, salsas y ultraprocesados · media plato de verdura antes del resto.</p>
+                  </div>
+                </div>
+              )}
+            </section>
 
             <section className="bg-zinc-900/60 border border-zinc-800 p-6 rounded-[2rem] shadow-xl">
               <h3 className="text-[10px] font-black uppercase text-zinc-500 tracking-widest mb-6 flex items-center gap-2">
@@ -1321,11 +1773,11 @@
               </h3>
               <StrengthChart lifts={lifts} targets={targets} />
               {(() => {
-                const reached = ['bench','rdl','sq','mil'].filter(i => (lifts[i] || 0) >= (targets[i] || 0)).length;
+                const reached = STRENGTH_LIFTS.map(l => l.id).filter(i => (lifts[i] || 0) >= (targets[i] || 0)).length;
                 return (
                   <p className="text-[9px] font-bold text-zinc-600 uppercase tracking-widest text-center mt-4 pt-4 border-t border-zinc-800/40">
                     <span className={reached > 0 ? 'text-emerald-400 font-black' : 'text-zinc-500'}>{reached}</span>
-                    <span className="text-zinc-600"> / 4 EN META · BW {Math.round(currentWeight || 95)} KG</span>
+                    <span className="text-zinc-600"> / {STRENGTH_LIFTS.length} EN META · BW {Math.round(currentWeight || 95)} KG</span>
                   </p>
                 );
               })()}
@@ -1350,13 +1802,15 @@
               <ArrowLeft size={14} /> Volver al Panel
             </button>
             <h2 className="text-sm font-black uppercase tracking-widest border-b border-zinc-800 pb-4 mb-4">Seleccionar Rutina</h2>
-            {Object.entries(ROUTINES).map(([k, r]) => {
-              const last = getLastSessionValues(r.name);
+            {Object.entries(ROUTINES).filter(([k, r]) => !r.legacy || showLegacy).map(([k, r]) => {
+              const last = r.type === 'run'
+                ? (runStats.last ? { when: runStats.last.timestamp } : null)
+                : getLastSessionValues(r.name);
               return (
                 <Button3D key={k} onClick={() => startSession(k)} color="zinc" className="w-full text-left justify-between py-6">
                   <div className="flex flex-col items-start gap-1">
-                    <span className="text-[9px] text-emerald-500 tracking-widest">
-                      {last ? `Última: ${new Date(last.when).toLocaleDateString('es-ES', { day: '2-digit', month: 'short' })}` : 'Nueva rutina'}
+                    <span className={`text-[9px] tracking-widest ${r.legacy ? 'text-zinc-500' : (r.type === 'run' ? 'text-sky-400' : 'text-emerald-500')}`}>
+                      {r.legacy ? 'Rutina anterior · ' : ''}{last ? `Última: ${new Date(last.when).toLocaleDateString('es-ES', { day: '2-digit', month: 'short' })}` : 'Nueva rutina'}
                     </span>
                     <span className="text-base normal-case">{r.name}</span>
                   </div>
@@ -1364,6 +1818,9 @@
                 </Button3D>
               );
             })}
+            <button onClick={() => setShowLegacy(v => !v)} className="w-full pt-4 text-[10px] font-black uppercase tracking-widest text-zinc-500">
+              {showLegacy ? 'Ocultar rutinas anteriores' : 'Mostrar rutinas anteriores (Día A/B, Kettlebell)'}
+            </button>
           </div>
         )}
 
@@ -1376,7 +1833,29 @@
             <div>
               <h2 className="text-[10px] font-black uppercase text-zinc-500 mb-4 tracking-[0.3em]">Preparación</h2>
               <p className="text-2xl font-black uppercase leading-tight">{activeRoutine.prep}</p>
-              {lastSessionInfo && (
+              {activeRoutine.type === 'strength' && !activeRoutine.legacy && (
+                <div className="mt-8 space-y-2 text-left">
+                  {activeRoutine.exercises.map(ex => (
+                    <div key={ex.id} className="flex justify-between items-center bg-zinc-900 border border-zinc-800 rounded-2xl px-4 py-3">
+                      <span className="text-xs font-black uppercase">{ex.name}</span>
+                      <span className="text-[10px] font-bold text-emerald-400 tracking-widest">{ex.target}</span>
+                    </div>
+                  ))}
+                  <p className="text-[10px] text-zinc-500 tracking-widest font-bold text-center pt-2">RIR 1-2 · DESCANSO 3:00</p>
+                </div>
+              )}
+              {activeRoutine.type === 'run' && (
+                <div className="mt-8 space-y-2 text-left">
+                  {[['Calentamiento', "5' caminata ligera"], ['6 bloques', "2' trote Z2 + 1.5' caminata"], ['Enfriamiento', "5' caminata suave"]].map(([a, b]) => (
+                    <div key={a} className="flex justify-between items-center bg-zinc-900 border border-zinc-800 rounded-2xl px-4 py-3">
+                      <span className="text-xs font-black uppercase">{a}</span>
+                      <span className="text-[10px] font-bold text-sky-400 tracking-widest">{b}</span>
+                    </div>
+                  ))}
+                  <p className="text-[10px] text-zinc-500 tracking-widest font-bold text-center pt-2">AVISO SONORO Y VIBRACIÓN EN CADA CAMBIO</p>
+                </div>
+              )}
+              {lastSessionInfo && activeRoutine.type !== 'run' && (
                 <p className="text-[10px] text-emerald-500/80 mt-6 tracking-widest font-bold">
                   📋 Pre-cargados los pesos del{' '}
                   {new Date(lastSessionInfo.when).toLocaleDateString('es-ES', { day: '2-digit', month: 'short' })}
@@ -1384,10 +1863,12 @@
               )}
             </div>
             <Button3D onClick={() => {
+              if (activeRoutine.type === 'run') { startRun(); return; }
               setFlow('workout');
               if (activeRoutine.type === 'kb') initExercise(null, true, lastSessionInfo);
               else initExercise(activeRoutine.exercises[0], false, lastSessionInfo);
-            }} className="w-full text-sm">Todo Listo</Button3D>
+            }} className="w-full text-sm">{activeRoutine.type === 'run' ? 'Empezar Carrera' : 'Todo Listo'}</Button3D>
+            <button onClick={resetToDashboard} className="w-full text-[10px] font-black uppercase tracking-widest text-zinc-500">Cancelar</button>
           </div>
         )}
 
@@ -1406,6 +1887,21 @@
                 {activeRoutine.exercises[exerciseIndex].isSS && <LayoutList className="text-zinc-600" size={24} />}
                 {activeRoutine.exercises[exerciseIndex].name}
               </h2>
+              {activeRoutine.exercises[exerciseIndex].target && (
+                <p className="text-xs font-black text-emerald-400 tracking-widest mt-3">
+                  OBJETIVO: {activeRoutine.exercises[exerciseIndex].target} <span className="text-zinc-500">· RIR 1-2</span>
+                </p>
+              )}
+              {activeRoutine.exercises[exerciseIndex].note && (
+                <p className="text-xs text-zinc-400 leading-relaxed mt-3 border-l-2 border-amber-500/60 pl-3">
+                  {activeRoutine.exercises[exerciseIndex].note}
+                </p>
+              )}
+              {activeRoutine.exercises[exerciseIndex].alt && currentSets.every(x => !x.completed) && (
+                <button onClick={swapToAlt} className="mt-4 text-[10px] font-black uppercase tracking-widest text-amber-400 bg-amber-500/10 border border-amber-500/30 px-3 py-2 rounded-xl">
+                  ⇄ Cambiar a {activeRoutine.exercises[exerciseIndex].alt.name}
+                </button>
+              )}
             </div>
 
             <div className="space-y-4">
@@ -1514,8 +2010,97 @@
           </div>
         )}
 
+        {/* WORKOUT - RUN */}
+        {flow === 'workout' && activeRoutine && activeRoutine.type === 'run' && runState && (() => {
+          const ph = runPos.phase;
+          const isTrot = ph && ph.kind === 'run';
+          const color = !ph ? 'text-zinc-400' : isTrot ? 'text-sky-400' : (ph.kind === 'walk' ? 'text-emerald-400' : 'text-zinc-300');
+          const bar = !ph ? 'bg-zinc-500' : isTrot ? 'bg-sky-500' : (ph.kind === 'walk' ? 'bg-emerald-500' : 'bg-zinc-500');
+          const phasePct = ph ? Math.min(100, ((ph.secs - runPos.left) / ph.secs) * 100) : 100;
+          const next = RUN_PHASES[runPos.idx + 1];
+          return (
+            <div className="p-5 space-y-5 anim-fade">
+              <div className="bg-zinc-900 border border-zinc-800 p-6 rounded-[2.5rem] shadow-2xl relative overflow-hidden text-center">
+                <div className={`absolute top-0 left-0 h-1.5 ${bar} transition-all`} style={{ width: `${(runElapsed / RUN_TOTAL) * 100}%` }} />
+                <button onClick={askExitWorkout} className="absolute top-4 right-4 text-zinc-600 hover:text-red-500 p-2.5 bg-zinc-950 rounded-xl border border-zinc-800 transition-colors">
+                  <X size={18} />
+                </button>
+                <p className="text-[10px] font-black text-zinc-500 uppercase tracking-[0.3em] mt-2">
+                  {ph && ph.block ? `Bloque ${ph.block} / ${RUN_BLOCKS}` : 'Carrera · Intervalos'}
+                </p>
+                <h2 className={`text-4xl font-black uppercase mt-4 ${color}`}>{ph ? ph.label : 'Fin'}</h2>
+                <p className="text-[11px] text-zinc-400 uppercase tracking-widest mt-2">{ph ? ph.sub : ''}</p>
+                <div className="text-[7rem] sm:text-[9rem] font-black tabular-nums leading-none my-6">{fmtMS(Math.ceil(runPos.left))}</div>
+                <div className="h-2.5 bg-zinc-950 rounded-full border border-zinc-800/50 overflow-hidden">
+                  <div className={`h-full ${bar} transition-all`} style={{ width: `${phasePct}%` }} />
+                </div>
+                <div className="flex justify-between text-[10px] font-bold text-zinc-500 uppercase tracking-widest mt-4">
+                  <span>Llevas {fmtMS(runElapsed)}</span>
+                  <span>Quedan {fmtMS(Math.max(0, RUN_TOTAL - runElapsed))}</span>
+                </div>
+                {next && (
+                  <p className="text-[10px] font-black text-zinc-600 uppercase tracking-widest mt-3">
+                    Después: {next.label} {fmtMS(next.secs)}
+                  </p>
+                )}
+                {runState.pausedAt && (
+                  <p className="text-xs font-black text-amber-400 uppercase tracking-widest mt-4 animate-pulse">En pausa</p>
+                )}
+              </div>
+
+              <div className="flex gap-1">
+                {RUN_PHASES.map((p, i) => (
+                  <div key={i} style={{ flexGrow: p.secs }}
+                       className={`h-3 rounded-sm ${i < runPos.idx ? (p.kind === 'run' ? 'bg-sky-500' : 'bg-emerald-600') : i === runPos.idx ? 'bg-zinc-200 animate-pulse' : (p.kind === 'run' ? 'bg-sky-900/60' : 'bg-zinc-800')}`} />
+                ))}
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <Button3D onClick={toggleRunPause} color="zinc" className="w-full">
+                  {runState.pausedAt ? <><Play size={16} /> Reanudar</> : 'Pausar'}
+                </Button3D>
+                <Button3D onClick={skipRunPhase} color="zinc" className="w-full">
+                  Saltar fase <ChevronRight size={16} />
+                </Button3D>
+              </div>
+              <Button3D onClick={askFinishRun} color="white" className="w-full text-sm">Terminar Carrera</Button3D>
+            </div>
+          );
+        })()}
+
+        {/* SUMMARY - RUN */}
+        {flow === 'summary' && activeRoutine && activeRoutine.type === 'run' && (
+          <div className="p-5 space-y-6 anim-slide-lg">
+            <div className="bg-zinc-900 border border-zinc-800 p-8 rounded-[3rem] text-center shadow-2xl relative overflow-hidden">
+              <div className="absolute top-0 left-0 w-full h-1.5 bg-sky-500" />
+              <p className="text-[10px] font-black text-zinc-500 uppercase mb-4 tracking-[0.3em]">Carrera · Intervalos</p>
+              <h2 className="text-6xl font-black tabular-nums">
+                {runResult.blocks || 0}<span className="text-2xl text-zinc-600">/{RUN_BLOCKS}</span>
+              </h2>
+              <p className="text-[10px] text-zinc-500 mt-3 uppercase tracking-widest">Bloques de trote completados</p>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="bg-zinc-900 border border-zinc-800 p-5 rounded-[2rem]">
+                <h3 className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-3">Bloques</h3>
+                <NumberInput integer value={runResult.blocks} onChange={v => setRunResult(r => ({ ...r, blocks: v, runMinutes: Math.min(RUN_BLOCKS, Number(v) || 0) * 2 }))} />
+              </div>
+              <div className="bg-zinc-900 border border-zinc-800 p-5 rounded-[2rem]">
+                <h3 className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-3">Minutos</h3>
+                <NumberInput value={runResult.minutes} onChange={v => setRunResult(r => ({ ...r, minutes: v }))} />
+              </div>
+            </div>
+            <input type="text" placeholder="NOTA: sensaciones, Aquiles / rodilla..." value={runResult.note || ''}
+                   onChange={e => setRunResult(r => ({ ...r, note: e.target.value }))}
+                   className="w-full bg-zinc-950 border border-zinc-800 rounded-2xl p-4 text-center font-bold text-xs tracking-widest outline-none focus:border-sky-500 transition-colors" />
+            <Button3D disabled={isSaving} onClick={saveRun} className="w-full text-sm">
+              {isSaving ? 'Guardando...' : <><Save size={20} /> Guardar Carrera</>}
+            </Button3D>
+            <button onClick={askExitWorkout} className="w-full text-[10px] font-black uppercase tracking-widest text-zinc-500">Descartar</button>
+          </div>
+        )}
+
         {/* SUMMARY */}
-        {flow === 'summary' && (
+        {flow === 'summary' && !(activeRoutine && activeRoutine.type === 'run') && (
           <div className="p-5 space-y-8 anim-slide-lg">
             <div className="bg-zinc-900 border border-zinc-800 p-8 sm:p-10 rounded-[3rem] text-center shadow-2xl relative overflow-hidden">
               <div className="absolute top-0 left-0 w-full h-1.5 bg-emerald-500" />
@@ -1572,7 +2157,7 @@
                               {new Date(w.timestamp).toLocaleString('es-ES', { dateStyle: 'short', timeStyle: 'short' })}
                             </span>
                             <span className="text-[10px] font-bold text-zinc-500 tracking-widest">
-                              {sum.exCount} EJ · {sum.totalSets} SERIES · {sum.totalVol} KG
+                              {workoutLine(w)}
                             </span>
                           </div>
                         </div>
@@ -1582,6 +2167,14 @@
                       {isOpen && (
                         <div className="px-6 pb-6 pt-2 border-t border-zinc-800/60 anim-fade">
                           <div className="space-y-4 mb-6">
+                            {isRun(w) && (
+                              <div className="flex flex-wrap gap-2">
+                                <span className="bg-sky-500/10 border border-sky-500/30 text-sky-300 text-[10px] font-bold px-3 py-1.5 rounded-xl tracking-widest">{(w.run||{}).blocks}/{(w.run||{}).totalBlocks} BLOQUES</span>
+                                <span className="bg-zinc-950 border border-zinc-800 text-zinc-300 text-[10px] font-bold px-3 py-1.5 rounded-xl tracking-widest">{(w.run||{}).runMinutes}' TROTE</span>
+                                <span className="bg-zinc-950 border border-zinc-800 text-zinc-300 text-[10px] font-bold px-3 py-1.5 rounded-xl tracking-widest">{(w.run||{}).minutes} MIN TOTAL</span>
+                                {(w.run||{}).note && <p className="w-full text-zinc-400 text-xs mt-2">{w.run.note}</p>}
+                              </div>
+                            )}
                             {(w.log || []).map((l, lIdx) => (
                               <div key={lIdx}>
                                 <p className="text-[9px] font-black text-zinc-500 uppercase tracking-widest mb-2">
@@ -1597,10 +2190,10 @@
                               </div>
                             ))}
                           </div>
-                          <div className="grid grid-cols-2 gap-3">
-                            <Button3D onClick={() => startEditWorkout(idx)} color="zinc" className="w-full">
+                          <div className={`grid ${isRun(w) ? 'grid-cols-1' : 'grid-cols-2'} gap-3`}>
+                            {!isRun(w) && <Button3D onClick={() => startEditWorkout(idx)} color="zinc" className="w-full">
                               <Edit size={16} /> Editar
-                            </Button3D>
+                            </Button3D>}
                             <Button3D onClick={() => askDeleteWorkout(idx)} color="red" className="w-full">
                               <Trash2 size={16} /> Borrar
                             </Button3D>
@@ -1689,13 +2282,15 @@
               ))}
               {getMonthGrid(calMonth).map(({ d, inMonth }, i) => {
                 const a = dayActivities(d);
-                const hasW = a.workouts.length > 0;
+                const hasW = a.workouts.some(x => !isRun(x));
+                const hasR = a.workouts.some(isRun);
                 const hasK = a.walks.length > 0;
                 const hasH = a.health.length > 0;
                 const isToday = sameDay(d, new Date());
                 const isSelected = calSelectedDay && sameDay(d, calSelectedDay);
                 let bg = 'bg-zinc-900/40';
-                if (hasW && hasK) bg = 'bg-emerald-500/40';
+                if (hasW && (hasK || hasR)) bg = 'bg-emerald-500/40';
+                else if (hasR) bg = 'bg-sky-500/20';
                 else if (hasW) bg = 'bg-emerald-500/25';
                 else if (hasK) bg = 'bg-teal-500/20';
                 else if (hasH) bg = 'bg-amber-500/10';
@@ -1714,6 +2309,7 @@
                     </span>
                     <div className="flex gap-0.5 h-1.5">
                       {hasW && <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />}
+                      {hasR && <span className="w-1.5 h-1.5 rounded-full bg-sky-400" />}
                       {hasK && <span className="w-1.5 h-1.5 rounded-full bg-teal-400" />}
                       {hasH && <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />}
                     </div>
@@ -1723,7 +2319,8 @@
             </div>
 
             <div className="flex items-center gap-4 text-[9px] font-bold text-zinc-500 uppercase tracking-widest justify-center pt-1 flex-wrap">
-              <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-emerald-400 inline-block" />Entreno</span>
+              <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-emerald-400 inline-block" />Fuerza</span>
+              <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-sky-400 inline-block" />Carrera</span>
               <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-teal-400 inline-block" />NEAT</span>
               <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-amber-400 inline-block" />Pesaje</span>
             </div>
@@ -1768,7 +2365,7 @@
                             </div>
                             <p className="text-sm font-black text-zinc-100 uppercase mb-1">{w.routine}</p>
                             <p className="text-[10px] font-bold text-zinc-500 tracking-widest">
-                              {sum.exCount} EJ · {sum.totalSets} SERIES · {sum.totalVol} KG
+                              {workoutLine(w)}
                             </p>
                           </div>
                         );

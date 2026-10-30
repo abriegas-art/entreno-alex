@@ -2,7 +2,7 @@
    Estrategia cache-first para HTML y assets CDN.
    Permite usar la app sin cobertura (sótano del gym, etc.).
 */
-const VERSION = 'entreno-alex-v11';
+const VERSION = 'entreno-alex-v13';
 const CORE = [
   './',
   './index.html',
